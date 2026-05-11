@@ -1,49 +1,136 @@
+---
+name: trading-behavior-lab
+title: Trading Behavior Lab
+title_zh: 交易行为实验室
+description: Analyze wallet trading behavior through replay cards, behavioral diagnosis, and what-if exit simulations.
+version: 0.1.0
+status: prototype
+language: en
+ui_languages:
+  - en
+  - zh
+primary_source: OKX OnchainOS reserved integration
+current_data_mode: mock-first demo
+execution_mode: analysis-only
+does_not:
+  - provide direct buy or sell recommendations
+  - execute trades
+  - sign wallet transactions
+  - custody assets
+---
+
 # Trading Behavior Lab Skill
 
 交易行为实验室
 
-## Skill Idea
+## Summary
 
-Trading Behavior Lab is a wallet trade replay coach prototype. The core idea is:
+Trading Behavior Lab is an analysis-only Skill prototype for wallet trade behavior replay.
 
-Most tools tell users what to buy next. Trading Behavior Lab helps users understand what happened in their previous trades.
-
-The Skill analyzes wallet trade behavior and presents a replay-style report: entry quality, exit quality, profit capture, missed upside, drawdown behavior, repeated mistakes, and strategy alternatives.
+The core innovation is shifting from alpha discovery to trader behavior analysis. Instead of asking "what should I buy next?", the Skill helps users inspect why previous trades underperformed: weak exits, missed upside, poor profit protection, long loser holds, and repeated behavioral leaks.
 
 ## Current Implementation Status
 
-This submission is a mock-first frontend prototype.
+This project currently uses mock wallet trade data to demonstrate the full analysis flow.
 
-- It uses mock wallet trade data to demonstrate the full analysis flow.
-- It includes analysis functions and adapter boundaries for future OKX OnchainOS / Solana data integration.
-- It includes optional server-side adapter code, but live data availability depends on server credentials, API access, wallet coverage, and usable price-path data.
-- If data retrieval fails or credentials are not configured, the app falls back to mock analysis instead of breaking the user experience.
-- No real API keys should be included in the Skill package.
+Important implementation notes:
 
-## Intended Users
+- Current data mode: mock-first frontend demo.
+- OKX OnchainOS adapter: reserved for integration and present as an adapter boundary / optional server-side path.
+- The Skill should not be represented as a completed production OnchainOS integration yet.
+- No real API keys should be included in the package.
+- If adapter-backed data is unavailable, the app uses fallback mock analysis and labels the data source.
 
-- Meme-token traders who want to review past behavior.
-- Wallet users who want to understand repeated mistakes.
-- Traders who sell winners too early or hold losers too long.
-- Users who want a shareable, screenshot-friendly behavior report.
+## OKX OnchainOS Requirement Alignment
 
-## Trigger / Entry Point
+The intended production direction is to use OKX OnchainOS as the primary information source for wallet transaction history and on-chain market context.
 
-The user opens the web app and enters:
+Planned OnchainOS usage:
 
-- Wallet address
-- Chain: Solana or X Layer
-- Period: 7D, 30D, or 90D
+1. Fetch wallet transaction history.
+2. Normalize token buy/sell events.
+3. Identify complete round-trip token trades.
+4. Use OKX / OnchainOS market data or historical candles to reconstruct price paths.
+5. Feed those normalized trades into the deterministic behavior analysis layer.
 
-Current default behavior:
+Trading tool boundary:
 
-- No wallet data is shown before address input.
-- After Analyze is clicked, the app shows a loading state.
-- The analysis route returns either an OKX-backed response when available or a mock fallback response.
+- This Skill is analysis-only in the current version.
+- It does not execute swaps or automatically trade.
+- Future versions may link users to OKX trading surfaces or transaction tooling only after explicit safety review and clear user confirmation flows.
 
-## Core Logic
+## Trigger Description
 
-The analysis is built around a `WalletAnalysis` object:
+The Skill should trigger when the user asks to analyze or replay a wallet's past trading behavior.
+
+### English Trigger Examples
+
+- "Analyze this wallet's trading behavior."
+- "Replay my Solana wallet trades."
+- "Why did this wallet lose money?"
+- "Show me if I sold too early."
+- "What mistakes does this wallet keep making?"
+- "Run a what-if replay for this wallet."
+- "Generate a trading behavior report card."
+- "Check profit capture and missed upside for this address."
+
+### Chinese Trigger Examples
+
+- "分析这个钱包的交易行为。"
+- "复盘这个 Solana 钱包。"
+- "看看这个钱包为什么亏。"
+- "我是不是经常卖飞？"
+- "帮我分析这个地址的交易漏洞。"
+- "给这个钱包做回放模拟。"
+- "生成交易行为成绩单。"
+- "看一下利润捕获率和最大卖飞。"
+
+## Input Parameters
+
+Expected user inputs:
+
+- `walletAddress`: wallet address to analyze
+- `chain`: `Solana` or `X Layer`
+- `period`: `7D`, `30D`, or `90D`
+
+The current UI starts empty. It does not load a default wallet before user input.
+
+## Complete Execution Flow
+
+1. Receive wallet address, chain, and period.
+2. Show loading state so the user knows analysis is running.
+3. Attempt adapter-backed analysis when server-side configuration and compatible data are available.
+4. If using future OKX OnchainOS integration:
+   - Fetch wallet transaction history.
+   - Page through transaction results with bounded limits.
+   - Filter irrelevant records such as failed transactions, pure SOL transfers, stablecoin transfers, and incomplete token events.
+   - Group token events by token contract address.
+   - Detect complete buy-then-sell round trips.
+   - Fetch or reconstruct price path data for each replayable trade.
+5. Normalize each trade into `TradeReplay`.
+6. Run deterministic analysis functions:
+   - entry score
+   - exit score
+   - profit capture rate
+   - drawdown behavior
+   - trading personality
+   - trading leaks
+   - personalized rules
+   - what-if strategy simulation
+7. Build a `WalletAnalysis` object.
+8. Render structured dashboard sections:
+   - Overall diagnosis
+   - Summary metric cards
+   - Trading personality
+   - Drawdown behavior
+   - Top leaks
+   - Personalized rules
+   - What If Replay Simulation
+   - Report card
+   - Paginated trade replay cards
+9. Clearly label data source or fallback status.
+
+## Core Data Structure
 
 ```ts
 WalletAnalysis {
@@ -60,27 +147,26 @@ WalletAnalysis {
 }
 ```
 
-Each replayable trade includes:
+Each `TradeReplay` can include:
 
-- Token symbol and address
-- Buy and sell time
-- Buy and sell price
-- Hold duration
-- Realized PnL
-- Max upside
-- Max drawdown
-- Post-buy high and low
-- Profit capture rate
-- Entry score
-- Exit score
-- Mistake tags
-- Diagnosis
-- Suggested fix
-- Minute-level price path
+- token symbol and address
+- buy time and sell time
+- buy price and sell price
+- hold duration
+- realized PnL
+- max upside
+- max drawdown
+- profit capture rate
+- entry score
+- exit score
+- mistake tags
+- diagnosis
+- suggested fix
+- minute-level price path
 
-## Analysis Functions
+## Core Analysis Logic
 
-The Skill uses deterministic analysis helpers:
+The Skill uses deterministic helper functions:
 
 - `calculateEntryScore(trade)`
 - `calculateExitScore(trade)`
@@ -92,63 +178,18 @@ The Skill uses deterministic analysis helpers:
 - `buildWhatIfSimulation(trades)`
 - `generateReportCard(walletAnalysis)`
 
-These functions are currently suitable for product demonstration and behavioral coaching UI. They are not presented as audited financial or trading models.
+Instruction quality principles:
 
-## Output Format
-
-The app returns a dashboard-style report with:
-
-1. Overall Diagnosis
-   - Main leak
-   - One-line diagnosis
-   - Key fix
-   - Evidence list
-
-2. Metric Cards
-   - Total trades
-   - Win rate
-   - Realized PnL
-   - Average hold time
-   - Profit capture rate
-   - Max missed upside
-   - Average winner hold
-   - Average loser hold
-   - Trading personality
-   - Grade
-
-3. Trading Personality
-   - Label such as Profit Leaker, Paper Hand Sniper, Diamond Bagholder, etc.
-   - Explanation
-   - Evidence-based behavior traits
-
-4. What If Replay Simulation
-   - Actual result
-   - Strategy comparison
-   - Best alternative
-   - Improvement potential
-   - AI-style insight
-
-5. Report Card
-   - Wallet summary
-   - Personality
-   - Win rate
-   - Profit capture
-   - Biggest leak
-   - Suggested fix
-   - Roast/commentary
-
-6. Trade Replay Cards
-   - Paginated cards
-   - Diagnosis
-   - Main mistake
-   - Profit capture rate
-   - Suggested fix
-   - Mini price path
-   - Per-trade what-if detail
+- Ground every conclusion in observed trade data.
+- Separate behavior diagnosis from trading advice.
+- Use clear labels for estimated, simulated, mock, or fallback values.
+- Avoid saying that a wallet is profitable or unprofitable beyond the available sample.
+- Avoid token recommendations.
+- Avoid execution instructions such as "buy", "sell now", or "enter this trade".
 
 ## What If Replay Simulation
 
-The Skill simulates four exit strategies against each trade's price path.
+The Skill compares actual exits against four retrospective rule-based exit strategies.
 
 ### Strategy A: Staged Take Profit
 
@@ -176,25 +217,157 @@ The Skill simulates four exit strategies against each trade's price path.
 - After +100%, protect +20%
 - After +200%, protect +80%
 
-The simulation is for replay and coaching. It does not imply future performance and does not execute trades.
+Simulation boundaries:
 
-## Fallback Handling
+- The simulation is retrospective.
+- It does not predict future performance.
+- It does not execute orders.
+- It should be described as "what would have happened on this historical path", not as a future trading strategy guarantee.
 
-The `/api/analyze-wallet` route follows this flow:
+## Structured Output
 
-1. Parse wallet address, chain, and period.
-2. Attempt adapter-backed analysis when server-side configuration is available.
-3. If the 7D window has too little replayable data, optionally retry with 30D.
-4. If the adapter cannot return usable buy/sell pairs and price paths, return mock fallback analysis.
-5. The UI displays the data source message so the user knows whether they are seeing adapter-backed data or mock fallback data.
+Preferred output shape:
 
-Fallback examples:
+```json
+{
+  "walletAddress": "string",
+  "chain": "Solana",
+  "period": "30D",
+  "dataSource": "mock | okx-onchainos | fallback",
+  "summary": {
+    "totalTrades": 0,
+    "winRate": 0,
+    "realizedPnlPct": 0,
+    "profitCaptureRate": 0,
+    "maxMissedUpside": 0,
+    "avgWinnerHold": "0m",
+    "avgLoserHold": "0m",
+    "grade": "C+"
+  },
+  "diagnosis": {
+    "mainLeak": "string",
+    "oneLineDiagnosis": "string",
+    "keyFix": "string",
+    "evidence": []
+  },
+  "whatIf": {
+    "actualResultPct": 0,
+    "bestAlternativeStrategy": "string",
+    "improvementPotentialPct": 0,
+    "strategyResults": []
+  },
+  "trades": []
+}
+```
 
-- Missing server credentials
-- API request error
-- No complete buy/sell round trip
-- Missing price path / historical candles
-- Unsupported or low-coverage token data
+UI output sections:
+
+1. Overall Diagnosis
+2. Metric Cards
+3. Trading Personality
+4. Drawdown Behavior
+5. Top Trading Leaks
+6. Personalized Rules
+7. What If Replay Simulation
+8. Report Card
+9. Paginated Trade Replay Cards
+
+## Fallback Behavior
+
+Fallback is required for a stable user experience.
+
+The Skill should fallback when:
+
+- API credentials are missing.
+- OKX / OnchainOS request fails.
+- Rate limits or temporary network errors occur.
+- Wallet has no complete buy/sell round trips in the selected window.
+- Historical candle or price-path data is unavailable.
+- Token metadata is incomplete.
+
+Fallback behavior:
+
+1. Do not crash the UI.
+2. Return mock analysis only when live data cannot produce a complete analysis.
+3. Show a visible data source message.
+4. Avoid presenting fallback output as real wallet analysis.
+5. For a 7D window with too little replayable data, retry 30D before fallback.
+
+Example fallback message:
+
+```text
+Data source: mock fallback.
+Reason: no complete buy/sell token pairs with usable price paths were available for the selected period.
+```
+
+Chinese fallback example:
+
+```text
+数据来源：模拟数据。
+原因：当前周期内没有足够完整的买入、卖出和K线数据。
+```
+
+## Token Efficiency, Caching, and Performance
+
+Token efficiency strategy:
+
+- Use compact structured summaries instead of dumping full transaction history.
+- Only send normalized trade fields to the analysis layer.
+- Keep verbose raw transaction data out of user-facing output.
+- Paginate replay cards instead of rendering every trade at once.
+- Limit what-if detail to the selected sample or current page.
+
+Caching strategy for future OnchainOS integration:
+
+- Cache wallet transaction pages by `walletAddress + chain + period`.
+- Cache token candle data by `chain + tokenAddress + timeWindow`.
+- Cache normalized `TradeReplay` objects separately from raw transactions.
+- Use short TTLs for recent periods and longer TTLs for older historical windows.
+- Reuse cached price paths for repeated what-if simulations.
+
+Performance strategy:
+
+- Bound transaction pagination.
+- Bound replay-card count per page.
+- Retry rate-limited requests with small backoff.
+- Avoid repeated price-path fetches for the same token/time window.
+- Display loading state immediately after analysis starts.
+- Return fallback output rather than blocking indefinitely.
+
+## Human Review Criteria Alignment
+
+### Strategy Executability
+
+The Skill produces concrete behavior rules such as:
+
+- "If unrealized PnL exceeds +80%, sell at least 30%."
+- "If a position reaches +100%, do not let final realized PnL fall below +20%."
+- "If there is no +30% move within 20 minutes, reduce confidence."
+
+These are retrospective improvement rules, not automatic trade instructions.
+
+### Strategy Result Effectiveness
+
+The Skill compares actual historical exits against simulated alternatives on the same price path. It reports improvement potential as retrospective analysis only.
+
+### Strategy Theme Innovation
+
+The innovation is behavior analysis rather than alpha discovery:
+
+- Not "find the next token"
+- Not "copy this wallet"
+- Not "auto-trade"
+- Instead: "understand why the previous trades failed or underperformed"
+
+## Safety Boundaries
+
+- Analysis-only Skill.
+- No direct buy/sell recommendations.
+- No automatic trading.
+- No wallet signing.
+- No custody.
+- No guaranteed returns.
+- No claim that what-if strategies predict future results.
 
 ## Example Output
 
@@ -220,33 +393,24 @@ Main Leak:
 Selling winners too early
 
 Suggested Fix:
-Use staged take-profit and activate trailing stop after large unrealized gains.
+Use staged take-profit as a review rule for future planning. This is not an instruction to trade immediately.
 ```
 
-## Example Chinese UI Phrases
+## Example Chinese Output
 
 ```text
 你的主要漏洞：盈利单卖太早
-关键修复：使用分批止盈，并在浮盈翻倍后启用移动止盈。
-这笔接近持平，不代表盈利。
+关键修复：复盘时重点检查分批止盈和移动止盈纪律。
+数据来源：模拟数据 / OKX OnchainOS / fallback
 当前展示 5 张复盘卡，共覆盖 59 笔交易。
 ```
 
-## Safety Notes
+## Future Integration Plan
 
-- The Skill does not provide buy/sell recommendations.
-- The Skill does not connect to user wallets for signing.
-- The Skill does not execute swaps or transactions.
-- The Skill should not store API keys in the repository.
-- The Skill should label mock or fallback data clearly.
-
-## Future Integration Direction
-
-- Production-grade OKX OnchainOS integration
-- Solana transaction parser
-- Token classification improvements
-- Better price-path reconstruction
-- Fee, slippage, and priority-fee cost model
-- More robust pagination and historical coverage
-- Exportable report cards
+- Use OKX OnchainOS as the primary transaction history source.
+- Use OKX market/candle data to reconstruct price paths.
+- Improve token classification and stablecoin filtering.
+- Add fee, slippage, gas, and priority-fee estimates.
+- Expand historical pagination and cache normalized replay data.
+- Keep all trading actions outside the Skill unless separately reviewed and explicitly confirmed by the user.
 
