@@ -1,5 +1,5 @@
 # Trading Behavior Lab
-
+![Trading Behavior Lab Preview](./public/preview.png) 
 交易行为实验室
 
 Trading Behavior Lab is a Web3 wallet trade replay prototype focused on trader behavior analysis. Instead of telling users what token to buy next, it helps users review how they behaved in previous trades: entry quality, exit quality, missed upside, drawdown, profit capture, repeated mistakes, and rule improvements.
