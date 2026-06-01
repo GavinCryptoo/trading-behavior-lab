@@ -1,82 +1,84 @@
-# Trading Behavior Lab
-![Trading Behavior Lab Preview](./public/preview.png) 
-交易行为实验室
+# Trading Behavior Lab｜交易行为实验室
 
-Trading Behavior Lab is a Web3 wallet trade replay prototype focused on trader behavior analysis. Instead of telling users what token to buy next, it helps users review how they behaved in previous trades: entry quality, exit quality, missed upside, drawdown, profit capture, repeated mistakes, and rule improvements.
+An open-source wallet-based trading behavior analysis tool for on-chain traders.
 
-## Current Status
+![Trading Behavior Lab Preview](./public/preview.png)
 
-This project is currently a mock-first frontend prototype.
+Trading Behavior Lab｜交易行为实验室 是一个开源的钱包交易行为分析工具，帮助链上交易者通过钱包地址复盘历史交易，分析买入质量、卖出质量、利润捕获率、最大回撤、卖飞情况和交易行为问题。
 
-- The default demo flow uses mock wallet trade data from `src/data/mockWalletAnalysis.ts`.
-- The app includes deterministic analysis functions and UI modules for the full replay experience.
-- The codebase contains reserved adapter boundaries for future OKX OnchainOS / Solana integration.
-- The project should not be described as a production OnchainOS integration yet.
-- No real API keys are included in this repository.
-- This is analysis-only software. It does not execute trades, sign transactions, custody assets, or provide direct buy/sell recommendations.
+## Overview
 
-## Why This Exists
+Trading Behavior Lab turns wallet trading history into structured behavior analytics. The project focuses on reviewing past trades instead of recommending the next trade or executing orders.
 
-Most crypto tools focus on alpha discovery. Trading Behavior Lab focuses on behavior replay:
+It is designed to help users inspect:
 
-- Did the wallet buy too late?
-- Did it sell too early?
-- Did winners continue higher after exit?
-- Did losers stay open much longer than winners?
-- Which exit strategy would have performed better on the same historical path?
+- Entry quality and whether a wallet often buys late.
+- Exit quality and whether a wallet sells too early.
+- Profit capture rate after a trade becomes profitable.
+- Missed gains after exit.
+- Maximum drawdown during a trade.
+- Repeated behavior patterns across trades.
 
-The goal is not to predict the next trade. The goal is to make previous trading behavior easier to inspect.
+The current app ships with a mock demo flow and a reserved OKX-style adapter path for wallet transaction history and market data. When adapter-backed data is unavailable, the app falls back to clearly labeled demo data instead of pretending incomplete data is complete.
+
+## Why this project exists
+
+Many on-chain traders only look at final PnL. That misses the behavior behind the result: whether the trade was entered too late, exited too early, held through avoidable drawdown, or failed to capture the main move.
+
+Trading Behavior Lab aims to convert wallet activity into readable behavior metrics so users can review questions such as:
+
+- Did this wallet often chase after a large move had already happened?
+- Did exits happen before the main upside?
+- Were losing trades held longer than winning trades?
+- Was profit protected after a strong move?
+- Did high-volatility assets create excessive drawdown?
+
+This project is for retrospective analysis and education. It is not financial advice, not a signal service, and not an automated trading system.
 
 ## Features
 
-- Wallet input with chain and period selection.
-- Empty initial state: no default wallet data appears before the user submits an address.
-- Summary metric cards:
-  - Total trades
-  - Win rate
-  - Realized PnL
-  - Average hold time
-  - Profit capture rate
-  - Max missed upside
-  - Winner and loser hold behavior
-  - Trading personality
-  - Overall grade
-- Overall diagnosis card.
-- Trading personality module with evidence text.
-- Drawdown behavior analysis.
-- Top trading leaks.
-- Personalized rule suggestions.
-- What If Replay Simulation:
-  - Staged Take Profit
-  - Trailing Stop
-  - Time Stop
-  - Capital Protection
-- Shareable report card.
-- Paginated trade replay cards.
+Current implemented features include:
+
+- Wallet address input with chain and period selection.
+- Empty initial state before the user submits a wallet.
+- Mock data / demo mode for running the app without API keys.
+- Fallback-aware API route for adapter-backed analysis.
+- Trade replay dashboard.
+- Entry and exit quality review.
+- Profit capture analysis.
+- Missed gains / sold-too-early review.
+- Maximum drawdown view.
+- Trading personality summary.
+- Repeated trading leak detection.
+- Personalized rule suggestions based on historical behavior.
+- What-if replay simulations for rule-based exits.
+- Report-style trading behavior summary.
 - Chinese / English UI toggle.
-- Fallback-aware server route for future adapter-backed analysis.
+- Responsive dashboard UI.
 
-## Technology Stack
+Planned work is tracked in [ROADMAP.md](./ROADMAP.md).
 
-- Next.js 16
-- React 19
+## Screenshots
+
+![Trading Behavior Lab dashboard preview](./public/preview.png)
+
+## Tech Stack
+
+- Next.js
+- React
 - TypeScript
 - Tailwind CSS
 - Radix UI primitives
-- lucide-react icons
-- undici for optional server-side proxy-aware requests
+- lucide-react
+- Node.js
 
-## Install
+## Getting Started
 
 ```bash
+git clone https://github.com/GavinCryptoo/trading-behavior-lab.git
+cd trading-behavior-lab
 npm install
-```
-
-The original generated project includes `pnpm-lock.yaml`, but the scripts in `package.json` are standard npm scripts. The commands below are aligned with the current `package.json`.
-
-## Run Development Server
-
-```bash
+cp .env.example .env.local
 npm run dev
 ```
 
@@ -86,34 +88,70 @@ Open:
 http://localhost:3000
 ```
 
-## Build
+The default mock demo works without API keys. Optional OKX environment variables are only needed when working on the adapter-backed data path.
+
+## Environment Variables
+
+Do not commit real credentials. Keep local values in `.env.local`.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `OKX_API_KEY` | Optional | OKX Web3 API key for adapter-backed data experiments |
+| `OKX_SECRET_KEY` | Optional | OKX Web3 API secret |
+| `OKX_PASSPHRASE` | Optional | OKX Web3 API passphrase |
+| `OKX_PROJECT_ID` | Optional | OKX Web3 project identifier |
+
+Create local config from the example:
+
+```bash
+cp .env.example .env.local
+```
+
+## Available Scripts
+
+```bash
+npm run dev
+```
+
+Start the local development server.
 
 ```bash
 npm run build
 ```
 
-## Start Production Build
+Create a production build.
 
 ```bash
 npm run start
 ```
 
-## Environment Variables
-
-Do not commit real credentials.
-
-`.env.local.example`:
+Start the production build.
 
 ```bash
-OKX_API_KEY=
-OKX_SECRET_KEY=
-OKX_PASSPHRASE=
-OKX_PROJECT_ID=
+npm run typecheck
 ```
 
-`.env.local` is ignored by git.
+Run TypeScript validation.
 
-At the current stage, the project documentation should be read as: currently uses mock data, with OnchainOS adapter reserved for integration.
+```bash
+npm run lint
+```
+
+Run ESLint checks.
+
+## Data Sources
+
+The project currently supports two data modes:
+
+- Mock demo data from `src/data/mockWalletAnalysis.ts`.
+- Optional OKX-style adapter path under `src/lib/adapters/`.
+
+The adapter path is intentionally conservative:
+
+- It does not execute swaps.
+- It does not sign transactions.
+- It does not custody funds.
+- It may fall back to demo data when credentials, complete buy/sell pairs, or price paths are unavailable.
 
 ## Project Structure
 
@@ -142,17 +180,17 @@ src/data/
 src/lib/analysis/
   calculateEntryScore.ts          Entry score logic
   calculateExitScore.ts           Exit score logic
-  profitCapture.ts                Profit capture / giveback logic
+  profitCapture.ts                Profit capture logic
   tradingPersonality.ts           Personality classification
   tradingLeaks.ts                 Leak detection
   personalizedRules.ts            Rule generation
-  whatIfSimulation.ts             What-if simulation strategies
+  whatIfSimulation.ts             Rule-based what-if simulations
   drawdownBehavior.ts             Drawdown behavior metrics
   reportCard.ts                   Report card generation
 
 src/lib/adapters/
-  okxAdapter.ts                   Reserved OKX-style adapter implementation
-  okxClient.ts                    Reserved signed OKX client wrapper
+  okxAdapter.ts                   Optional OKX-style adapter implementation
+  okxClient.ts                    Optional signed OKX client wrapper
   solanaAdapter.ts                Reserved Solana adapter interface
 ```
 
@@ -160,76 +198,49 @@ src/lib/adapters/
 
 Each replayable trade can contain:
 
-- Token symbol and token address
-- Buy time and sell time
-- Hold duration
-- Buy price and sell price
-- Realized PnL
-- Max upside
-- Max drawdown
-- Profit capture rate
-- Entry score
-- Exit score
-- Mistake tags
-- Diagnosis
-- Suggested fix
-- Minute-level price path
+- Token symbol and token address.
+- Buy time and sell time.
+- Hold duration.
+- Buy price and sell price.
+- Realized PnL.
+- Max upside.
+- Max drawdown.
+- Profit capture rate.
+- Entry score.
+- Exit score.
+- Mistake tags.
+- Diagnosis.
+- Suggested fix.
+- Minute-level price path.
 
-The scoring and simulations are deterministic product-prototype logic. They are not audited trading models.
+The scoring and simulations are deterministic product logic. They are not audited trading models.
 
-## What If Replay Simulation
+## What It Does Not Do
 
-The app compares actual exits with four rule-based exit models:
+- Does not recommend what to buy.
+- Does not provide guaranteed buy or sell signals.
+- Does not auto-trade.
+- Does not sign wallet transactions.
+- Does not store private keys or seed phrases.
+- Does not custody assets.
+- Does not promise better trading performance.
 
-1. Staged Take Profit
-   - TP1 +80%, sell 30%
-   - TP2 +150%, sell 30%
-   - TP3 +300%, sell 30%
-   - Remaining 10% moonbag
-   - Stop loss -30%
+## Contributing
 
-2. Trailing Stop
-   - Activates after +100% unrealized PnL
-   - Exits after 35% pullback from peak
-   - Stop loss -30%
+Contributions are welcome. Start with [CONTRIBUTING.md](./CONTRIBUTING.md) and check [ROADMAP.md](./ROADMAP.md) for planned work.
 
-3. Time Stop
-   - Exits if no +30% move appears within 20 minutes
-   - Stop loss -30%
-   - Sells at least 50% after +100%
+Good first areas:
 
-4. Capital Protection
-   - Protects breakeven after +50%
-   - Protects +20% after +100%
-   - Protects +80% after +200%
+- Improve wallet transaction normalization.
+- Add tests for analysis helpers.
+- Improve fallback and data coverage labels.
+- Add screenshots and documentation examples.
+- Refine the dashboard for more chains and trade types.
 
-These simulations are retrospective. They do not predict future performance and do not execute orders.
+## License
 
-## OKX OnchainOS Integration Direction
+MIT. See [LICENSE](./LICENSE).
 
-OKX Skill review requires OnchainOS to be the primary information source and trading tool. This prototype is prepared for that direction but should be described accurately:
+## Disclaimer
 
-- Current state: mock data demonstrates the full analysis flow.
-- Reserved integration path: use OKX OnchainOS wallet transaction history as the primary source for historical trades.
-- Reserved market data path: use OKX DEX / OnchainOS market or candle data to reconstruct price paths.
-- Reserved transaction tooling: future versions may link to OKX swap / trading surfaces, but this Skill itself should remain analysis-only unless explicitly redesigned and reviewed for trading safety.
-
-Future work:
-
-- Production-grade OnchainOS wallet transaction normalization
-- Token classification and stablecoin filtering
-- Solana transaction parser fallback
-- Better price-path reconstruction
-- Fee, slippage, gas, and priority-fee cost modeling
-- Larger paginated replay history
-- Exportable report card assets
-
-## Limitations
-
-- Mock data is used for the default demonstration path.
-- Optional adapter code does not guarantee coverage for every wallet, token, chain, or price path.
-- The app does not recommend what to buy.
-- The app does not auto-trade.
-- The app does not connect to wallets for signing.
-- Historical analysis can be incomplete when price data or complete buy/sell pairs are unavailable.
-
+Trading Behavior Lab is for historical wallet analysis and educational review. It is not financial advice, investment advice, or a trading recommendation system.

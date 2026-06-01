@@ -2,15 +2,15 @@
 name: trading-behavior-lab
 title: Trading Behavior Lab
 title_zh: 交易行为实验室
-description: Analyze wallet trading behavior through replay cards, behavioral diagnosis, and what-if exit simulations.
+description: Open-source wallet trading behavior analysis through replay cards, behavioral diagnosis, and what-if exit simulations.
 version: 0.1.0
-status: prototype
+status: open-source prototype
 language: en
 ui_languages:
   - en
   - zh
-primary_source: OKX OnchainOS reserved integration
-current_data_mode: mock-first demo
+primary_source: wallet analytics with optional OKX-style adapter path
+current_data_mode: mock-first demo with adapter fallback
 execution_mode: analysis-only
 does_not:
   - provide direct buy or sell recommendations
@@ -25,19 +25,19 @@ does_not:
 
 ## Summary
 
-Trading Behavior Lab is an analysis-only Skill prototype for wallet trade behavior replay.
+Trading Behavior Lab is an open-source, analysis-only tool for wallet trade behavior replay.
 
 The core innovation is shifting from alpha discovery to trader behavior analysis. Instead of asking "what should I buy next?", the Skill helps users inspect why previous trades underperformed: weak exits, missed upside, poor profit protection, long loser holds, and repeated behavioral leaks.
 
 ## Current Implementation Status
 
-This project currently uses mock wallet trade data to demonstrate the full analysis flow.
+This project currently uses mock wallet trade data to demonstrate the full analysis flow, with an optional adapter path for OKX-style wallet history and market data experiments.
 
 Important implementation notes:
 
-- Current data mode: mock-first frontend demo.
-- OKX OnchainOS adapter: reserved for integration and present as an adapter boundary / optional server-side path.
-- The Skill should not be represented as a completed production OnchainOS integration yet.
+- Current data mode: mock-first frontend demo with fallback labels.
+- OKX-style adapter: present as an adapter boundary / optional server-side path.
+- The project should not be represented as a completed production data integration unless the adapter is configured and verified for the target wallet.
 - No real API keys should be included in the package.
 - If adapter-backed data is unavailable, the app uses fallback mock analysis and labels the data source.
 
@@ -413,4 +413,3 @@ Use staged take-profit as a review rule for future planning. This is not an inst
 - Add fee, slippage, gas, and priority-fee estimates.
 - Expand historical pagination and cache normalized replay data.
 - Keep all trading actions outside the Skill unless separately reviewed and explicitly confirmed by the user.
-
