@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { WalletInput } from "@/components/dashboard/wallet-input"
 import { MetricCards } from "@/components/dashboard/metric-cards"
@@ -25,6 +25,7 @@ import { analyzeDrawdownBehavior } from "@/src/lib/analysis/drawdownBehavior"
 import { generateReportCard } from "@/src/lib/analysis/reportCard"
 
 type Language = "en" | "zh"
+type AnalysisStatus = "idle" | "loading" | "success" | "error"
 type AnalyzeWalletResponse = {
   ok: boolean
   dataSource: DataSource
@@ -102,7 +103,7 @@ function strategyReason(id: string) {
   return reasons[id] ?? "真实卖出结果。"
 }
 
-function AnalysisLoadingPanel() {
+function AnalysisLoadingPanel({ elapsedSeconds, language }: { elapsedSeconds: number; language: Language }) {
   const steps = ["连接 Bitget Wallet Skill", "读取代币 / 钱包上下文", "拉取K线与交易标记", "计算行为复盘与风险提示"]
 
   return (
@@ -110,9 +111,11 @@ function AnalysisLoadingPanel() {
       <div className="flex items-start gap-4">
         <div className="mt-1 h-3 w-3 rounded-full bg-primary shadow-[0_0_18px_rgba(53,208,83,0.9)] animate-pulse" />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-primary">正在分析钱包，请不要关闭页面</p>
+          <p className="text-sm font-semibold text-primary">{language === "zh" ? "正在分析钱包，请不要关闭页面" : "Analyzing wallet. Keep this page open."}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            正在请求可用的 Bitget Wallet Skill 数据并生成复盘。如果数据不完整，系统会明确标注覆盖范围并保留模拟兜底数据。
+            {language === "zh"
+              ? `正在请求可用的 Bitget Wallet Skill 数据并生成复盘。通常需要 3-15 秒，超过 20 秒会提示失败。当前已等待 ${elapsedSeconds} 秒。`
+              : `Requesting available Bitget Wallet Skill data and building the replay. This usually takes 3-15 seconds; requests time out after 20 seconds. ${elapsedSeconds}s elapsed.`}
           </p>
           <div className="mt-4 grid gap-2 md:grid-cols-4">
             {steps.map((step) => (
@@ -427,6 +430,15 @@ export default function TradingBehaviorLabDashboard() {
   const [analysisOverride, setAnalysisOverride] = useState<WalletAnalysis | null>(null)
   const [dataSource, setDataSource] = useState<DataSource>("mock")
   const [sourceMessage, setSourceMessage] = useState("")
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>("idle")
+  const [statusMessage, setStatusMessage] = useState("")
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!isLoading) return
+    const timer = window.setInterval(() => setElapsedSeconds((value) => value + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [isLoading])
 
   const mockAnalysis = useMemo(() => {
     const whatIf = buildWhatIfSimulation(mockWalletAnalysis.trades)
@@ -463,6 +475,9 @@ export default function TradingBehaviorLabDashboard() {
 
   const handleAnalyze = async (address: string, selectedChain: string, selectedPeriod: string, tokenAddress: string, selectedMode: AnalysisMode) => {
     setIsLoading(true)
+    setAnalysisStatus("loading")
+    setStatusMessage(language === "zh" ? "正在连接 Bitget Wallet Skill 并读取链上市场数据。" : "Connecting to Bitget Wallet Skill and reading on-chain market data.")
+    setElapsedSeconds(0)
     setWalletAddress(address)
     setChain(selectedChain)
     setPeriod(selectedPeriod)
@@ -471,12 +486,17 @@ export default function TradingBehaviorLabDashboard() {
     setDataSource("mock")
     setSourceMessage("正在连接 Bitget Wallet Skill 并分析钱包交易，请稍候。")
 
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 20_000)
+    const startedAt = Date.now()
+
     try {
       const [response] = await Promise.all([
         fetch("/api/analyze-wallet", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ walletAddress: address, chain: selectedChain, period: selectedPeriod, tokenAddress, mode: selectedMode }),
+          signal: controller.signal,
         }),
         wait(900),
       ])
@@ -486,12 +506,27 @@ export default function TradingBehaviorLabDashboard() {
       setDataSource(payload.dataSource ?? payload.source)
       setSourceMessage(payload.message)
       setIsAnalyzed(true)
+      if (payload.ok) {
+        setAnalysisStatus("success")
+        const durationSeconds = Math.max(1, Math.ceil((Date.now() - startedAt) / 1000))
+        setStatusMessage(language === "zh" ? `分析完成，耗时约 ${durationSeconds} 秒。${payload.dataCoverage === "full" ? "已获得完整数据覆盖。" : "页面已标注当前数据覆盖范围。"}` : `Analysis completed in about ${durationSeconds}s. The page shows the current data coverage.`)
+      } else {
+        setAnalysisStatus("error")
+        setStatusMessage(language === "zh" ? `${payload.error ?? payload.message} 当前展示的是明确标注的兜底结果。` : `${payload.error ?? payload.message} A labeled fallback result is displayed.`)
+      }
     } catch (error) {
       setDataSource("mock")
-      setSourceMessage(error instanceof Error ? `接口暂不可用：${error.message}` : "接口暂不可用，已切换模拟数据。")
+      const isTimeout = error instanceof DOMException && error.name === "AbortError"
+      const message = isTimeout
+        ? (language === "zh" ? "请求超过 20 秒已停止。请检查 Bitget API 权限、IP 白名单或网络后重试。" : "The request exceeded 20 seconds. Check Bitget API access, IP allowlisting, or network and retry.")
+        : (error instanceof Error ? `接口暂不可用：${error.message}` : "接口暂不可用，已切换模拟数据。")
+      setSourceMessage(message)
+      setAnalysisStatus("error")
+      setStatusMessage(message)
       setAnalysisOverride(null)
       setIsAnalyzed(false)
     } finally {
+      window.clearTimeout(timeout)
       setIsLoading(false)
     }
   }
@@ -502,13 +537,20 @@ export default function TradingBehaviorLabDashboard() {
 
       <main className="container mx-auto px-4 lg:px-6 py-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <WalletInput onAnalyze={handleAnalyze} isLoading={isLoading} language={language} />
+          <WalletInput
+            onAnalyze={handleAnalyze}
+            isLoading={isLoading}
+            language={language}
+            analysisStatus={analysisStatus}
+            statusMessage={statusMessage}
+            elapsedSeconds={elapsedSeconds}
+          />
 
           <HackathonDemoFlow language={language} />
 
           <SafetyNotice language={language} />
 
-          {isLoading && <AnalysisLoadingPanel />}
+          {isLoading && <AnalysisLoadingPanel elapsedSeconds={elapsedSeconds} language={language} />}
 
           {!isLoading && !isAnalyzed && <EmptyAnalysisState language={language} />}
 

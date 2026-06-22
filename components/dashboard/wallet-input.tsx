@@ -5,13 +5,18 @@ import { Loader2, Search, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+type AnalysisStatus = "idle" | "loading" | "success" | "error"
+
 interface WalletInputProps {
   onAnalyze: (address: string, chain: string, period: string, tokenAddress: string, mode: "token_replay" | "wallet_behavior") => void
   isLoading?: boolean
   language?: "en" | "zh"
+  analysisStatus?: AnalysisStatus
+  statusMessage?: string
+  elapsedSeconds?: number
 }
 
-export function WalletInput({ onAnalyze, isLoading, language = "en" }: WalletInputProps) {
+export function WalletInput({ onAnalyze, isLoading, language = "en", analysisStatus = "idle", statusMessage, elapsedSeconds = 0 }: WalletInputProps) {
   const [address, setAddress] = useState("")
   const [chain, setChain] = useState("sol")
   const [tokenAddress, setTokenAddress] = useState("")
@@ -101,9 +106,31 @@ export function WalletInput({ onAnalyze, isLoading, language = "en" }: WalletInp
           {isLoading ? (language === "zh" ? "分析中..." : "Analyzing...") : (language === "zh" ? "开始分析" : "Analyze")}
         </Button>
       </form>
-      {isLoading && (
-        <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-          {language === "zh" ? "正在分析钱包交易，请稍候。真实链上数据可能需要几秒钟。" : "Analyzing wallet trades. Real on-chain data may take a few seconds."}
+      {analysisStatus !== "idle" && (
+        <div
+          className={`mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${
+            analysisStatus === "success"
+              ? "border-profit/30 bg-profit/10 text-profit"
+              : analysisStatus === "error"
+                ? "border-loss/30 bg-loss/10 text-loss"
+                : "border-primary/30 bg-primary/10 text-primary"
+          }`}
+          aria-live="polite"
+        >
+          {analysisStatus === "loading" && <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />}
+          <div>
+            <p className="font-medium">
+              {analysisStatus === "loading"
+                ? (language === "zh" ? "正在分析" : "Analysis in progress")
+                : analysisStatus === "success"
+                  ? (language === "zh" ? "分析完成" : "Analysis complete")
+                  : (language === "zh" ? "分析失败" : "Analysis failed")}
+              {analysisStatus === "loading" && elapsedSeconds > 0 ? ` · ${language === "zh" ? `已等待 ${elapsedSeconds} 秒` : `${elapsedSeconds}s elapsed`}` : ""}
+            </p>
+            <p className="mt-1 text-xs opacity-90">
+              {statusMessage ?? (language === "zh" ? "正在准备分析结果。" : "Preparing analysis results.")}
+            </p>
+          </div>
         </div>
       )}
     </div>
