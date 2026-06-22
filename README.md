@@ -130,6 +130,8 @@ The adapter reserves and normalizes these Bitget Wallet Skill / Bitget Wallet AP
 - Address analysis
 - Quote preview only
 
+For Solana Token Replay Mode, wallet-specific token balance changes are read from the configured public `SOLANA_RPC_URL`. Bitget Wallet APIs provide the market and risk context around that replay. This is required because the documented public Bitget Wallet Markets API does not expose a wallet-filtered historical swap list.
+
 `getSwapQuotePreview` is read-only and display-only. There is no `swapSend`, `orderSubmit`, signing, private-key handling, or automated execution path.
 
 If the official Bitget Wallet Skill runtime exposes SDK methods without API keys, keep `BITGET_WALLET_API_TOKEN` blank and wire those SDK calls inside `src/lib/adapters/bitgetClient.ts`. If an HTTP bridge is used, set `BITGET_WALLET_API_BASE` and, only if required by that bridge, `BITGET_WALLET_API_TOKEN`.
@@ -193,6 +195,7 @@ BITGET_WALLET_API_BASE=
 BITGET_WALLET_API_KEY=
 BITGET_WALLET_API_SECRET=
 BITGET_DEFAULT_CHAIN=sol
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 
 OKX_API_KEY=
 OKX_SECRET_KEY=
@@ -312,6 +315,7 @@ src/lib/analysis/
 ## Limitations
 
 - Some wallet/token histories may be partial depending on available Bitget data.
+- Solana Token Replay needs both a valid wallet address and token contract address. It reconstructs swaps only when balance changes provide a defensible buy/sell inference.
 - If complete buy/sell pairs are unavailable, the app shows partial analysis instead of inventing trades.
 - Wallet Behavior Mode may use mock replay cards as clearly labeled demo fallback data.
 - The Bitget HTTP paths in `bitgetClient.ts` are a minimal bridge layer and may need adjustment to match official Wallet Skill SDK or endpoint contracts.

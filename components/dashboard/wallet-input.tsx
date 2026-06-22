@@ -6,6 +6,30 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 type AnalysisStatus = "idle" | "loading" | "success" | "error"
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+function isSolanaPublicKey(value: string) {
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) return false
+  const bytes = [0]
+  for (const char of value) {
+    let carry = BASE58.indexOf(char)
+    if (carry < 0) return false
+    for (let index = 0; index < bytes.length; index += 1) {
+      const next = bytes[index] * 58 + carry
+      bytes[index] = next & 0xff
+      carry = next >> 8
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff)
+      carry >>= 8
+    }
+  }
+  for (const char of value) {
+    if (char !== "1") break
+    bytes.push(0)
+  }
+  return bytes.length === 32
+}
 
 interface WalletInputProps {
   onAnalyze: (address: string, chain: string, period: string, tokenAddress: string, mode: "token_replay" | "wallet_behavior") => void
@@ -22,12 +46,27 @@ export function WalletInput({ onAnalyze, isLoading, language = "en", analysisSta
   const [tokenAddress, setTokenAddress] = useState("")
   const [period, setPeriod] = useState("7d")
   const [mode, setMode] = useState<"token_replay" | "wallet_behavior">("token_replay")
+  const [validationError, setValidationError] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (address.trim()) {
-      onAnalyze(address.trim(), chain, period, tokenAddress.trim(), mode)
+    const wallet = address.trim()
+    const token = tokenAddress.trim()
+    if (!wallet) return
+    if (chain === "sol" && !isSolanaPublicKey(wallet)) {
+      setValidationError(language === "zh" ? "请输入有效的 Solana 钱包地址。当前地址不是 32 字节 Base58 公钥。" : "Enter a valid Solana wallet address. The current value is not a 32-byte Base58 public key.")
+      return
     }
+    if (mode === "token_replay" && !token) {
+      setValidationError(language === "zh" ? "真实单币复盘需要填写代币合约地址。" : "A token contract address is required for a real Token Replay.")
+      return
+    }
+    if (chain === "sol" && token && !isSolanaPublicKey(token)) {
+      setValidationError(language === "zh" ? "请输入有效的 Solana 代币合约地址。" : "Enter a valid Solana token contract address.")
+      return
+    }
+    setValidationError("")
+    onAnalyze(wallet, chain, period, token, mode)
   }
 
   return (
@@ -55,16 +94,22 @@ export function WalletInput({ onAnalyze, isLoading, language = "en", analysisSta
             type="text"
             placeholder={language === "zh" ? "钱包地址" : "Wallet Address"}
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => {
+              setAddress(e.target.value)
+              setValidationError("")
+            }}
             className="h-12 pl-4 pr-4 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20"
           />
         </div>
         <div className="relative">
           <Input
             type="text"
-            placeholder={language === "zh" ? "代币合约地址（可选）" : "Token Contract, optional"}
+            placeholder={language === "zh" ? "代币合约地址（单币复盘必填）" : "Token Contract, required for Token Replay"}
             value={tokenAddress}
-            onChange={(e) => setTokenAddress(e.target.value)}
+            onChange={(e) => {
+              setTokenAddress(e.target.value)
+              setValidationError("")
+            }}
             className="h-12 pl-4 pr-4 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20"
           />
         </div>
@@ -106,6 +151,9 @@ export function WalletInput({ onAnalyze, isLoading, language = "en", analysisSta
           {isLoading ? (language === "zh" ? "分析中..." : "Analyzing...") : (language === "zh" ? "开始分析" : "Analyze")}
         </Button>
       </form>
+      {validationError && (
+        <p className="mt-3 text-sm text-loss" role="alert">{validationError}</p>
+      )}
       {analysisStatus !== "idle" && (
         <div
           className={`mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${

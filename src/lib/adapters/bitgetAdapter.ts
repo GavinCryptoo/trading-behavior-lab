@@ -21,6 +21,7 @@ import { analyzeTradingLeaks } from "@/src/lib/analysis/tradingLeaks"
 import { analyzeTradingPersonality } from "@/src/lib/analysis/tradingPersonality"
 import { buildWhatIfSimulation } from "@/src/lib/analysis/whatIfSimulation"
 import { BitgetClient } from "./bitgetClient"
+import { SolanaRpcClient } from "./solanaRpcClient"
 import type { AnalyzeWalletParams, NormalizedKlinePoint, NormalizedTokenTransaction } from "./types"
 
 const MAX_REPLAY_TRADES = 8
@@ -141,7 +142,7 @@ function priceAt(kline: NormalizedKlinePoint[], timestamp: number) {
   return nearest.close
 }
 
-function buildPricePath(kline: NormalizedKlinePoint[], buyTime: number, buyPrice: number): PricePathPoint[] {
+function buildPricePath(kline: NormalizedKlinePoint[], buyTime: number, buyPrice: number, sellTime: number, sellPrice: number): PricePathPoint[] {
   const points = kline
     .filter((point) => point.timestamp >= buyTime)
     .slice(0, 180)
@@ -154,7 +155,10 @@ function buildPricePath(kline: NormalizedKlinePoint[], buyTime: number, buyPrice
       }
     })
 
-  return points.length ? points : [{ minute: 0, price: buyPrice, pnlPct: 0 }]
+  return points.length ? points : [
+    { minute: 0, price: buyPrice, pnlPct: 0 },
+    { minute: Math.max(1, Math.round((sellTime - buyTime) / 60000)), price: sellPrice, pnlPct: Math.round(((sellPrice - buyPrice) / buyPrice) * 1000) / 10 },
+  ]
 }
 
 function buildTrade(
@@ -168,7 +172,7 @@ function buildTrade(
   const sellPrice = sell.priceUsd ?? priceAt(kline, sell.timestamp)
   if (!buyPrice || !sellPrice) return null
 
-  const pricePath = buildPricePath(kline, buy.timestamp, buyPrice)
+  const pricePath = buildPricePath(kline, buy.timestamp, buyPrice, sell.timestamp, sellPrice)
   const realizedPnlPct = Math.round(((sellPrice - buyPrice) / buyPrice) * 1000) / 10
   const maxUpsidePct = Math.max(...pricePath.map((point) => point.pnlPct), realizedPnlPct)
   const maxDrawdownPct = Math.abs(Math.min(...pricePath.map((point) => point.pnlPct), 0))
@@ -340,6 +344,7 @@ function settledWarning(name: string, result: PromiseSettledResult<unknown>) {
 
 export class BitgetAdapter {
   private readonly client = new BitgetClient()
+  private readonly solanaRpc = new SolanaRpcClient()
 
   async getWalletAnalysis(params: AnalyzeWalletParams): Promise<WalletAnalysis> {
     if ((params.mode ?? (params.tokenAddress ? "token_replay" : "wallet_behavior")) === "wallet_behavior" && !params.tokenAddress) {
@@ -371,7 +376,9 @@ export class BitgetAdapter {
     ] = await Promise.allSettled([
       this.client.getTokenInfo(common),
       this.client.getTokenKline(common),
-      this.client.getTokenTransactions(common),
+      params.chain.toLowerCase() === "sol"
+        ? this.solanaRpc.getWalletTokenTransactions({ walletAddress: params.walletAddress, tokenAddress: params.tokenAddress, period: params.period })
+        : this.client.getTokenTransactions(common),
       this.client.getTokenSecurity(common),
       this.client.getTokenHolders(common),
       this.client.getTokenTradingDynamics(common),
@@ -381,7 +388,12 @@ export class BitgetAdapter {
 
     const tokenInfo = normalizeTokenInfo(settledValue(tokenInfoResult))
     const kline = normalizeKline(settledValue(klineResult))
-    const rawTransactions = normalizeTransactions(settledValue(transactionsResult))
+    const tokenSymbol = stringFrom(tokenInfo, ["symbol", "tokenSymbol"])
+    const rawTransactions = normalizeTransactions(settledValue(transactionsResult)).map((transaction) => ({
+      ...transaction,
+      tokenAddress: transaction.tokenAddress ?? params.tokenAddress,
+      symbol: transaction.symbol ?? tokenSymbol,
+    }))
     const exposesWallet = transactionRowsExposeWallet(rawTransactions)
     const walletTransactions = exposesWallet
       ? rawTransactions.filter((tx) => walletMatches(tx, params.walletAddress))
@@ -404,6 +416,7 @@ export class BitgetAdapter {
     const warnings = [
       ...buildDataCoverageWarnings(coverageStatus),
       !exposesWallet && rawTransactions.length ? "Transaction rows did not expose wallet fields; assuming the Bitget endpoint applied the walletAddress filter server-side." : undefined,
+      params.chain.toLowerCase() === "sol" && rawTransactions.length ? "Wallet-specific token transactions were reconstructed from public Solana RPC balance changes. USD values use a current SOL/USD reference and may be approximate." : undefined,
       ...[
         settledWarning("Token info", tokenInfoResult),
         settledWarning("Kline", klineResult),
