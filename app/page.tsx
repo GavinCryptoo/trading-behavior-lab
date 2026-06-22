@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { FileWarning } from "lucide-react"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { WalletInput } from "@/components/dashboard/wallet-input"
 import { MetricCards } from "@/components/dashboard/metric-cards"
@@ -151,6 +152,39 @@ function EmptyAnalysisState({ language }: { language: Language }) {
         </span>
       </div>
     </div>
+  )
+}
+
+function WalletReplayUnavailable({ analysis, dataSource, sourceMessage, language }: { analysis: WalletAnalysis; dataSource: DataSource; sourceMessage: string; language: Language }) {
+  const isChinese = language === "zh"
+
+  return (
+    <>
+      <BitgetContextCards analysis={analysis} dataSource={dataSource} sourceMessage={sourceMessage} language={language} />
+      <div className="glass-card rounded-2xl border border-warning/40 bg-warning/5 p-6" role="status">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-2 text-warning">
+            <FileWarning className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-base font-semibold text-foreground">
+              {isChinese ? "未取得该钱包的可核验交易记录，无法生成钱包行为复盘" : "No verifiable wallet transactions were returned, so a wallet behavior replay cannot be generated"}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {isChinese
+                ? "总交易数、胜率、收益、利润捕获率和交易人格都依赖该钱包的实际买入与卖出记录。当前 Bitget 数据覆盖未提供这些记录，因此页面不会展示固定模拟指标。"
+                : "Total trades, win rate, PnL, profit capture, and trading personality require actual wallet buy and sell records. The current Bitget coverage did not provide them, so fixed demo metrics are not displayed."}
+            </p>
+            <div className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              <p>{isChinese ? "- 请补充代币合约地址，优先使用单币复盘模式。" : "- Add a token contract and use Token Replay mode first."}</p>
+              <p>{isChinese ? "- 确认 Bitget API 权限和 IP 白名单已生效。" : "- Confirm Bitget API access and IP allowlisting."}</p>
+              <p>{isChinese ? "- 如果接口仍未返回钱包交易，结果会保持为空而不是虚构交易。" : "- If wallet transactions remain unavailable, results stay empty instead of being invented."}</p>
+              <p>{isChinese ? "- 模拟演示仅在 Mock Demo 模式下使用，不代表当前钱包。" : "- Mock Demo is only used in Mock Demo mode and does not represent this wallet."}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -506,13 +540,17 @@ export default function TradingBehaviorLabDashboard() {
       setDataSource(payload.dataSource ?? payload.source)
       setSourceMessage(payload.message)
       setIsAnalyzed(true)
-      if (payload.ok) {
+      const hasWalletReplay = Boolean(payload.analysis.bitgetMeta?.dataCoverageStatus?.walletTransactions) && payload.analysis.trades.length > 0 && payload.analysis.dataCoverage !== "mock_fallback"
+      const liveReplayUnavailable = payload.dataSource === "bitget" && !hasWalletReplay
+      if (payload.ok && !liveReplayUnavailable) {
         setAnalysisStatus("success")
         const durationSeconds = Math.max(1, Math.ceil((Date.now() - startedAt) / 1000))
         setStatusMessage(language === "zh" ? `分析完成，耗时约 ${durationSeconds} 秒。${payload.dataCoverage === "full" ? "已获得完整数据覆盖。" : "页面已标注当前数据覆盖范围。"}` : `Analysis completed in about ${durationSeconds}s. The page shows the current data coverage.`)
       } else {
         setAnalysisStatus("error")
-        setStatusMessage(language === "zh" ? `${payload.error ?? payload.message} 当前展示的是明确标注的兜底结果。` : `${payload.error ?? payload.message} A labeled fallback result is displayed.`)
+        setStatusMessage(liveReplayUnavailable
+          ? (language === "zh" ? "未取得该钱包的买卖记录，无法生成真实钱包复盘；页面已隐藏模拟指标。" : "No wallet buy/sell records were returned, so a real wallet replay was not generated; demo metrics are hidden.")
+          : (language === "zh" ? `${payload.error ?? payload.message} 当前展示的是明确标注的兜底结果。` : `${payload.error ?? payload.message} A labeled fallback result is displayed.`))
       }
     } catch (error) {
       setDataSource("mock")
@@ -555,7 +593,9 @@ export default function TradingBehaviorLabDashboard() {
           {!isLoading && !isAnalyzed && <EmptyAnalysisState language={language} />}
 
           {isAnalyzed && analysisOverride && (
-            language === "zh" ? (
+            dataSource === "bitget" && (!analysis.bitgetMeta?.dataCoverageStatus?.walletTransactions || analysis.trades.length === 0 || analysis.dataCoverage === "mock_fallback") ? (
+              <WalletReplayUnavailable analysis={analysis} dataSource={dataSource} sourceMessage={sourceMessage} language={language} />
+            ) : language === "zh" ? (
               <ZhDashboard analysis={analysis} dataSource={dataSource} sourceMessage={sourceMessage} />
             ) : (
               <>
