@@ -36,7 +36,7 @@ function concentrationLevel(value?: number): RiskLevel {
 export function analyzeHolderRisk(holderData: unknown): HolderRiskSummary {
   const record = asRecord(holderData)
   const holderRows = rows(holderData)
-  const topHolderPct = numberFrom(record, ["topHolderPct", "topHolderRatio", "top10HolderRatio", "top10Pct", "concentrationPct"])
+  const topHolderPct = numberFrom(record, ["topHolderPct", "topHolderRatio", "top10HolderRatio", "top10Pct", "top10_holder_percent", "concentrationPct"])
     ?? numberFrom(holderRows[0], ["percentage", "pct", "ratio"])
   const level = concentrationLevel(topHolderPct)
   const lowerText = JSON.stringify(holderData ?? {}).toLowerCase()

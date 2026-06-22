@@ -83,7 +83,7 @@ function recordsFrom(value: unknown): Record<string, unknown>[] {
 function normalizeKline(response?: unknown): NormalizedKlinePoint[] {
   return recordsFrom(response)
     .map<NormalizedKlinePoint | null>((row) => {
-      const timestamp = toTimestamp(row.timestamp ?? row.time ?? row.t ?? row.openTime)
+      const timestamp = toTimestamp(row.timestamp ?? row.time ?? row.t ?? row.ts ?? row.openTime)
       const close = numberFrom(row, ["close", "c", "price", "lastPrice"])
       if (!timestamp || close === undefined) return null
       return {
@@ -388,7 +388,8 @@ export class BitgetAdapter {
       : rawTransactions
     const securitySummary = analyzeSecurityRisk(settledValue(securityResult))
     const holderSummary = analyzeHolderRisk(settledValue(holdersResult))
-    const tradingDynamics = normalizeTokenInfo(settledValue(dynamicsResult))
+    const tradingDynamicsRecord = normalizeTokenInfo(settledValue(dynamicsResult))
+    const tradingDynamics = (tradingDynamicsRecord?.txn_info ?? tradingDynamicsRecord) as Record<string, unknown> | undefined
     const marketContext = buildBitgetMarketContext({ tokenInfo, tradingDynamics, kline })
     const smartMoneySummary = compareWithSmartMoney({ smartMoneyData: settledValue(smartMoneyResult), kolData: settledValue(smartMoneyResult) })
 

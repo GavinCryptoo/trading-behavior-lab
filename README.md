@@ -28,12 +28,13 @@ To enable Bitget mode, create `.env.local`:
 ```bash
 DATA_SOURCE=bitget
 BITGET_WALLET_SKILL_ENABLED=true
-BITGET_WALLET_API_BASE=<official Bitget Wallet Skill bridge or API base>
-BITGET_WALLET_API_TOKEN=<optional if required by that bridge>
+BITGET_WALLET_API_BASE=https://bopenapi.bgwapi.io
+BITGET_WALLET_API_KEY=<Bitget Wallet API key>
+BITGET_WALLET_API_SECRET=<Bitget Wallet API secret>
 BITGET_DEFAULT_CHAIN=sol
 ```
 
-If official Bitget Wallet Skill SDK calls do not require an API token, leave `BITGET_WALLET_API_TOKEN` empty and map those SDK calls inside `src/lib/adapters/bitgetClient.ts`.
+The official Bitget Wallet API client signs read-only requests with `BITGET_WALLET_API_KEY` and `BITGET_WALLET_API_SECRET`. Keep both only in `.env.local`; never commit them.
 
 ## What It Does
 
@@ -189,7 +190,8 @@ Copy `.env.local.example` to `.env.local` and fill only the values you need.
 DATA_SOURCE=mock
 BITGET_WALLET_SKILL_ENABLED=false
 BITGET_WALLET_API_BASE=
-BITGET_WALLET_API_TOKEN=
+BITGET_WALLET_API_KEY=
+BITGET_WALLET_API_SECRET=
 BITGET_DEFAULT_CHAIN=sol
 
 OKX_API_KEY=

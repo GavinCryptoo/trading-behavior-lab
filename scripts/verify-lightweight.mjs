@@ -23,7 +23,8 @@ for (const key of [
   "DATA_SOURCE=mock",
   "BITGET_WALLET_SKILL_ENABLED=false",
   "BITGET_WALLET_API_BASE=",
-  "BITGET_WALLET_API_TOKEN=",
+  "BITGET_WALLET_API_KEY=",
+  "BITGET_WALLET_API_SECRET=",
   "BITGET_DEFAULT_CHAIN=sol",
 ]) {
   assert(envExample.includes(key), `.env.local.example missing ${key}`)

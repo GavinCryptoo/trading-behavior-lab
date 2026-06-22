@@ -2,7 +2,14 @@ import type { SecurityRiskSummary } from "@/src/data/mockWalletAnalysis"
 
 function rows(value: unknown): Record<string, unknown>[] {
   if (Array.isArray(value)) return value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-  if (typeof value === "object" && value !== null) return [value as Record<string, unknown>]
+  if (typeof value === "object" && value !== null) {
+    const record = value as Record<string, unknown>
+    for (const key of ["data", "list", "items"]) {
+      const nested = rows(record[key])
+      if (nested.length) return nested
+    }
+    return [record]
+  }
   return []
 }
 
@@ -23,6 +30,14 @@ export function analyzeSecurityRisk(securityData: unknown): SecurityRiskSummary 
   }
 
   const flags: string[] = []
+  const riskChecks = Array.isArray(record.riskChecks) ? record.riskChecks : []
+  const warnChecks = Array.isArray(record.warnChecks) ? record.warnChecks : []
+  for (const check of [...riskChecks, ...warnChecks]) {
+    if (typeof check === "object" && check !== null) {
+      const label = (check as Record<string, unknown>).labelName
+      if (typeof label === "string") flags.push(label)
+    }
+  }
   const checks: Array<[string, string]> = [
     ["isHoneypot", "honeypot risk"],
     ["honeypot", "honeypot risk"],
@@ -40,7 +55,8 @@ export function analyzeSecurityRisk(securityData: unknown): SecurityRiskSummary 
 
   const explicit = String(record.riskLevel ?? record.level ?? "").toLowerCase()
   const riskScore = Number(record.riskScore ?? record.score)
-  const riskLevel = explicit.includes("high") || riskScore >= 70 || flags.length >= 3
+  const highRisk = record.highRisk === true || Number(record.riskCount) > 0
+  const riskLevel = highRisk || explicit.includes("high") || riskScore >= 70 || flags.length >= 3
     ? "high"
     : explicit.includes("medium") || riskScore >= 35 || flags.length
       ? "medium"

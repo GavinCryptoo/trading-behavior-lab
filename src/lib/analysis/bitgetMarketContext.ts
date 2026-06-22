@@ -33,11 +33,14 @@ export function buildBitgetMarketContext(params: {
   kline: NormalizedKlinePoint[]
 }): BitgetMarketContext {
   const tokenPrice = numberFrom(params.tokenInfo, ["priceUsd", "price", "currentPrice", "lastPrice"])
-  const marketCap = numberFrom(params.tokenInfo, ["marketCapUsd", "marketCap", "fdv"])
-  const liquidity = numberFrom(params.tokenInfo, ["liquidityUsd", "liquidity", "totalLiquidity"])
-  const volume24h = numberFrom(params.tokenInfo, ["volume24hUsd", "volume24h", "volume"])
+  const marketCap = numberFrom(params.tokenInfo, ["marketCapUsd", "marketCap", "market_cap", "fdv"])
+  const liquidity = numberFrom(params.tokenInfo, ["liquidityUsd", "liquidity", "totalLiquidity", "total_lp_usd"])
+  const volume24h = numberFrom(params.tokenInfo, ["volume24hUsd", "volume24h", "volume", "turnover_24h"])
+  const dynamics24h = params.tradingDynamics?.["24h"] as Record<string, unknown> | undefined
   const buyPressure = numberFrom(params.tradingDynamics, ["buyPressure", "buyPressurePct", "buyRatio"])
+    ?? numberFrom(dynamics24h, ["buy_turnover", "buyAmount"])
   const sellPressure = numberFrom(params.tradingDynamics, ["sellPressure", "sellPressurePct", "sellRatio"])
+    ?? numberFrom(dynamics24h, ["sell_turnover", "sellAmount"])
   const movePct = movement(params.kline)
   const volatilityPct = volatility(params.kline)
 
