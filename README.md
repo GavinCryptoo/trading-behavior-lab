@@ -1,84 +1,17 @@
-# Trading Behavior Lab｜交易行为实验室
-
-An open-source wallet-based trading behavior analysis tool for on-chain traders.
+# Trading Behavior Lab — Bitget Wallet Skill Edition
 
 ![Trading Behavior Lab Preview](./public/preview.png)
 
-Trading Behavior Lab｜交易行为实验室 是一个开源的钱包交易行为分析工具，帮助链上交易者通过钱包地址复盘历史交易，分析买入质量、卖出质量、利润捕获率、最大回撤、卖飞情况和交易行为问题。
+A wallet-based trade replay and behavior analysis copilot powered by Bitget Wallet Skill.
 
-## Overview
+Trading Behavior Lab helps users review historical token trades, compare entries and exits against market movement and smart money behavior, detect missed upside, drawdown habits, early exits, late entries, and generate safer trading rules.
 
-Trading Behavior Lab turns wallet trading history into structured behavior analytics. The project focuses on reviewing past trades instead of recommending the next trade or executing orders.
+This is not an auto-trading bot. It is a retrospective trading behavior replay and risk-analysis tool.
 
-It is designed to help users inspect:
-
-- Entry quality and whether a wallet often buys late.
-- Exit quality and whether a wallet sells too early.
-- Profit capture rate after a trade becomes profitable.
-- Missed gains after exit.
-- Maximum drawdown during a trade.
-- Repeated behavior patterns across trades.
-
-The current app ships with a mock demo flow and a reserved OKX-style adapter path for wallet transaction history and market data. When adapter-backed data is unavailable, the app falls back to clearly labeled demo data instead of pretending incomplete data is complete.
-
-## Why this project exists
-
-Many on-chain traders only look at final PnL. That misses the behavior behind the result: whether the trade was entered too late, exited too early, held through avoidable drawdown, or failed to capture the main move.
-
-Trading Behavior Lab aims to convert wallet activity into readable behavior metrics so users can review questions such as:
-
-- Did this wallet often chase after a large move had already happened?
-- Did exits happen before the main upside?
-- Were losing trades held longer than winning trades?
-- Was profit protected after a strong move?
-- Did high-volatility assets create excessive drawdown?
-
-This project is for retrospective analysis and education. It is not financial advice, not a signal service, and not an automated trading system.
-
-## Features
-
-Current implemented features include:
-
-- Wallet address input with chain and period selection.
-- Empty initial state before the user submits a wallet.
-- Mock data / demo mode for running the app without API keys.
-- Fallback-aware API route for adapter-backed analysis.
-- Trade replay dashboard.
-- Entry and exit quality review.
-- Profit capture analysis.
-- Missed gains / sold-too-early review.
-- Maximum drawdown view.
-- Trading personality summary.
-- Repeated trading leak detection.
-- Personalized rule suggestions based on historical behavior.
-- What-if replay simulations for rule-based exits.
-- Report-style trading behavior summary.
-- Chinese / English UI toggle.
-- Responsive dashboard UI.
-
-Planned work is tracked in [ROADMAP.md](./ROADMAP.md).
-
-## Screenshots
-
-![Trading Behavior Lab dashboard preview](./public/preview.png)
-
-## Tech Stack
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Radix UI primitives
-- lucide-react
-- Node.js
-
-## Getting Started
+## Judge Quick Start
 
 ```bash
-git clone https://github.com/GavinCryptoo/trading-behavior-lab.git
-cd trading-behavior-lab
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
@@ -88,82 +21,255 @@ Open:
 http://localhost:3000
 ```
 
-The default mock demo works without API keys. Optional OKX environment variables are only needed when working on the adapter-backed data path.
+The default mock demo works without API keys. It shows the full replay experience, Bitget-style market/security/context cards, fallback labels, what-if simulation, and report card.
 
-## Environment Variables
-
-Do not commit real credentials. Keep local values in `.env.local`.
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `OKX_API_KEY` | Optional | OKX Web3 API key for adapter-backed data experiments |
-| `OKX_SECRET_KEY` | Optional | OKX Web3 API secret |
-| `OKX_PASSPHRASE` | Optional | OKX Web3 API passphrase |
-| `OKX_PROJECT_ID` | Optional | OKX Web3 project identifier |
-
-Create local config from the example:
+To enable Bitget mode, create `.env.local`:
 
 ```bash
-cp .env.example .env.local
+DATA_SOURCE=bitget
+BITGET_WALLET_SKILL_ENABLED=true
+BITGET_WALLET_API_BASE=<official Bitget Wallet Skill bridge or API base>
+BITGET_WALLET_API_TOKEN=<optional if required by that bridge>
+BITGET_DEFAULT_CHAIN=sol
 ```
 
-## Available Scripts
+If official Bitget Wallet Skill SDK calls do not require an API token, leave `BITGET_WALLET_API_TOKEN` empty and map those SDK calls inside `src/lib/adapters/bitgetClient.ts`.
+
+## What It Does
+
+- Replays historical token trades.
+- Scores entry and exit quality.
+- Calculates profit capture, missed upside, and maximum drawdown.
+- Compares user behavior with smart money / KOL activity.
+- Adds security and holder-risk context before judging trade quality.
+- Runs what-if simulations for staged take profit, trailing stop, time stop, and capital protection.
+- Generates a shareable behavior report card.
+- Shows data coverage gaps instead of hiding incomplete data.
+
+## What It Does Not Do
+
+- Does not auto-trade.
+- Does not sign transactions.
+- Does not custody funds.
+- Does not store private keys, seed phrases, or wallet credentials.
+- Does not provide guaranteed buy/sell recommendations.
+- Does not submit swaps, orders, or fund-moving transactions.
+- Does not hide incomplete data coverage.
+
+All fund-moving behavior is disabled / not implemented / human-in-the-loop only.
+
+## Current Status
+
+The default mode remains mock-first so the project can run without any Bitget environment.
+
+- Mock Demo Mode uses `src/data/mockWalletAnalysis.ts`.
+- Bitget adapter boundaries are implemented in `src/lib/adapters/bitgetClient.ts` and `src/lib/adapters/bitgetAdapter.ts`.
+- Bitget live mode is enabled only when `DATA_SOURCE=bitget` and `BITGET_WALLET_SKILL_ENABLED=true`.
+- If Bitget data is missing or an endpoint fails, the API returns fallback-aware JSON instead of crashing the page.
+- If full wallet history is unavailable, the main live demo path is Token Replay Mode: `walletAddress + tokenAddress + chain + period`.
+- If complete buy/sell pairs are unavailable, the app shows partial analysis and data coverage limitations instead of inventing trades.
+
+## Current Integration Status
+
+| Area | Status |
+| --- | --- |
+| Mock Demo | Implemented |
+| Bitget adapter boundary | Implemented |
+| Token Replay mode | Implemented with fallback |
+| Wallet Behavior mode | Implemented with fallback |
+| Live Bitget API mapping | Pending official endpoint confirmation |
+| Swap execution | Intentionally not implemented |
+
+## Demo Modes
+
+### Mock Demo Mode
+
+Default mode. Uses bundled replayable trades with minute-level price paths and Bitget-style context fields.
+
+### Bitget Token Replay Mode
+
+Recommended hackathon demo mode.
+
+Input:
+
+- Wallet address
+- Chain
+- Token contract address
+- Period
+
+Flow:
+
+1. Fetch token info.
+2. Fetch token kline.
+3. Fetch token transaction list.
+4. Filter wallet-specific buy/sell records when supported.
+5. Reconstruct replayable trade paths when a complete pair is available.
+6. Add security, holder, trading dynamics, and smart money / KOL context.
+7. Return full or partial analysis with visible coverage warnings.
+
+### Bitget Wallet Behavior Mode
+
+Uses wallet-level address analysis when available. If complete historical trade replay is unavailable, the app keeps mock replay cards as clearly labeled demo fallback data.
+
+### Fallback Mode
+
+Used when live data, endpoint configuration, or complete trade pairs are unavailable. Fallback data is labeled as `mock_fallback`.
+
+## Bitget Wallet Skill Integration
+
+The adapter reserves and normalizes these Bitget Wallet Skill / Bitget Wallet API data directions:
+
+- Token info
+- Security audit
+- Kline
+- Trading dynamics
+- Transaction list
+- Holder analysis
+- Smart money / KOL markers
+- Address analysis
+- Quote preview only
+
+`getSwapQuotePreview` is read-only and display-only. There is no `swapSend`, `orderSubmit`, signing, private-key handling, or automated execution path.
+
+If the official Bitget Wallet Skill runtime exposes SDK methods without API keys, keep `BITGET_WALLET_API_TOKEN` blank and wire those SDK calls inside `src/lib/adapters/bitgetClient.ts`. If an HTTP bridge is used, set `BITGET_WALLET_API_BASE` and, only if required by that bridge, `BITGET_WALLET_API_TOKEN`.
+
+## Why This Fits Trading Agent Track
+
+Trading Behavior Lab is a trading behavior analysis agent. It is not generic infra and not a generic chatbot.
+
+The agent takes wallet/token context, reconstructs historical trade behavior when data coverage allows, scores entries and exits, compares user actions with market/security/holder/smart-money context, and turns that evidence into trading rules the user can review before future decisions.
+
+It stays human-in-the-loop: the output is retrospective diagnosis, risk context, and rule generation. It does not sign, submit, custody, or automate trades.
+
+## Product Flow
+
+1. User enters wallet address, chain, optional token contract address, period, and mode.
+2. API route checks `DATA_SOURCE`.
+3. Mock mode returns local demo analysis.
+4. Bitget mode calls the Bitget adapter when explicitly enabled.
+5. Adapter normalizes live token, security, holder, market, and smart money context.
+6. Analysis modules calculate entry score, exit score, profit capture, drawdown, what-if results, and behavior rules.
+7. UI displays data source, coverage, market context, security / holder risk, smart money contrast, replay cards, simulations, and report card.
+
+## Install
+
+```bash
+npm install
+```
+
+## Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Start the local development server.
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Build
 
 ```bash
 npm run build
 ```
 
-Create a production build.
-
-```bash
-npm run start
-```
-
-Start the production build.
-
-```bash
-npm run typecheck
-```
-
-Run TypeScript validation.
+## Lint
 
 ```bash
 npm run lint
 ```
 
-Run ESLint checks.
+## Environment
 
-## Data Sources
+Copy `.env.local.example` to `.env.local` and fill only the values you need.
 
-The project currently supports two data modes:
+```bash
+DATA_SOURCE=mock
+BITGET_WALLET_SKILL_ENABLED=false
+BITGET_WALLET_API_BASE=
+BITGET_WALLET_API_TOKEN=
+BITGET_DEFAULT_CHAIN=sol
 
-- Mock demo data from `src/data/mockWalletAnalysis.ts`.
-- Optional OKX-style adapter path under `src/lib/adapters/`.
+OKX_API_KEY=
+OKX_SECRET_KEY=
+OKX_PASSPHRASE=
+OKX_PROJECT_ID=
+```
 
-The adapter path is intentionally conservative:
+`DATA_SOURCE` supports:
 
-- It does not execute swaps.
-- It does not sign transactions.
-- It does not custody funds.
-- It may fall back to demo data when credentials, complete buy/sell pairs, or price paths are unavailable.
+- `mock`
+- `bitget`
+- `okx`
+
+Default is `mock`. Bitget mode only runs when both of these are true:
+
+```bash
+DATA_SOURCE=bitget
+BITGET_WALLET_SKILL_ENABLED=true
+```
+
+Do not commit real tokens, keys, secrets, seed phrases, or private keys.
+
+## Hackathon Demo Flow
+
+1. Input a wallet address, chain, token contract address, and `7d` period.
+2. Fetch available Bitget token, security, market, holder, and smart money context.
+3. Reconstruct the wallet's token replay when a complete buy/sell pair is available.
+4. Compare the user's entry/exit with market movement, smart money behavior, holder risk, and security risk.
+5. Generate a behavior report with profit capture, missed upside, drawdown, what-if replay, and shareable report card.
+
+## Analysis Model
+
+Each replayable trade can contain:
+
+- Token symbol
+- Token address
+- Buy time
+- Sell time
+- Hold duration
+- Buy price
+- Sell price
+- Realized PnL
+- Max upside
+- Max drawdown
+- Profit capture rate
+- Entry score
+- Exit score
+- Mistake tags
+- Diagnosis
+- Suggested fix
+- Minute-level price path
+- Smart money / KOL action at entry and exit
+- Security and holder-risk context
+- Buy/sell pressure
+- Market context diagnosis
+
+Additional mistake tags include:
+
+- `FOMO_ENTRY`
+- `EARLY_EXIT`
+- `LATE_EXIT`
+- `HELD_THROUGH_DRAWDOWN`
+- `IGNORED_SMART_MONEY_SELLING`
+- `BOUGHT_INTO_HOLDER_CONCENTRATION`
+- `SOLD_BEFORE_MOMENTUM_EXPANSION`
+- `NO_CLEAR_EXIT_RULE`
 
 ## Project Structure
 
 ```text
 app/
-  api/analyze-wallet/route.ts     Server route for analysis and fallback behavior
+  api/analyze-wallet/route.ts     Data-source router and fallback-aware API
   layout.tsx                      App metadata and root layout
   page.tsx                        Main dashboard page
 
 components/dashboard/
+  bitget-context-cards.tsx        Data source, market, risk, coverage, and quote cards
   dashboard-header.tsx            Header and language switch
-  wallet-input.tsx                Wallet input form
+  wallet-input.tsx                Wallet / chain / token / period / mode input
   metric-cards.tsx                Summary metric cards
   overall-diagnosis.tsx           Top diagnosis card
   trading-personality.tsx         Personality module
@@ -175,72 +281,37 @@ components/dashboard/
   degen-report-card.tsx           Report card component
 
 src/data/
-  mockWalletAnalysis.ts           Mock analysis dataset and shared types
+  mockWalletAnalysis.ts           Mock analysis dataset and shared analysis types
+
+src/lib/adapters/
+  bitgetClient.ts                 Minimal Bitget Wallet Skill / API request wrapper
+  bitgetAdapter.ts                Bitget-to-analysis normalization layer
+  types.ts                        Adapter input and normalized data types
+  okxAdapter.ts                   Legacy optional OKX adapter
+  okxClient.ts                    Legacy optional OKX client wrapper
 
 src/lib/analysis/
+  bitgetMarketContext.ts          Market context normalization
+  smartMoneyContrast.ts           User vs smart money / KOL comparison
+  securityRisk.ts                 Security risk summary
+  holderRisk.ts                   Holder concentration summary
+  dataCoverage.ts                 Coverage classification and warnings
   calculateEntryScore.ts          Entry score logic
   calculateExitScore.ts           Exit score logic
   profitCapture.ts                Profit capture logic
   tradingPersonality.ts           Personality classification
   tradingLeaks.ts                 Leak detection
   personalizedRules.ts            Rule generation
-  whatIfSimulation.ts             Rule-based what-if simulations
+  whatIfSimulation.ts             What-if simulation strategies
   drawdownBehavior.ts             Drawdown behavior metrics
   reportCard.ts                   Report card generation
-
-src/lib/adapters/
-  okxAdapter.ts                   Optional OKX-style adapter implementation
-  okxClient.ts                    Optional signed OKX client wrapper
-  solanaAdapter.ts                Reserved Solana adapter interface
 ```
 
-## Analysis Model
+## Limitations
 
-Each replayable trade can contain:
-
-- Token symbol and token address.
-- Buy time and sell time.
-- Hold duration.
-- Buy price and sell price.
-- Realized PnL.
-- Max upside.
-- Max drawdown.
-- Profit capture rate.
-- Entry score.
-- Exit score.
-- Mistake tags.
-- Diagnosis.
-- Suggested fix.
-- Minute-level price path.
-
-The scoring and simulations are deterministic product logic. They are not audited trading models.
-
-## What It Does Not Do
-
-- Does not recommend what to buy.
-- Does not provide guaranteed buy or sell signals.
-- Does not auto-trade.
-- Does not sign wallet transactions.
-- Does not store private keys or seed phrases.
-- Does not custody assets.
-- Does not promise better trading performance.
-
-## Contributing
-
-Contributions are welcome. Start with [CONTRIBUTING.md](./CONTRIBUTING.md) and check [ROADMAP.md](./ROADMAP.md) for planned work.
-
-Good first areas:
-
-- Improve wallet transaction normalization.
-- Add tests for analysis helpers.
-- Improve fallback and data coverage labels.
-- Add screenshots and documentation examples.
-- Refine the dashboard for more chains and trade types.
-
-## License
-
-MIT. See [LICENSE](./LICENSE).
-
-## Disclaimer
-
-Trading Behavior Lab is for historical wallet analysis and educational review. It is not financial advice, investment advice, or a trading recommendation system.
+- Some wallet/token histories may be partial depending on available Bitget data.
+- If complete buy/sell pairs are unavailable, the app shows partial analysis instead of inventing trades.
+- Wallet Behavior Mode may use mock replay cards as clearly labeled demo fallback data.
+- The Bitget HTTP paths in `bitgetClient.ts` are a minimal bridge layer and may need adjustment to match official Wallet Skill SDK or endpoint contracts.
+- Quote preview is display-only.
+- Analysis is retrospective and educational, not financial advice.

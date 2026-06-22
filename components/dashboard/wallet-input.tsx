@@ -6,20 +6,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface WalletInputProps {
-  onAnalyze: (address: string, chain: string, period: string) => void
+  onAnalyze: (address: string, chain: string, period: string, tokenAddress: string, mode: "token_replay" | "wallet_behavior") => void
   isLoading?: boolean
   language?: "en" | "zh"
 }
 
 export function WalletInput({ onAnalyze, isLoading, language = "en" }: WalletInputProps) {
   const [address, setAddress] = useState("")
-  const [chain, setChain] = useState("Solana")
-  const [period, setPeriod] = useState("7D")
+  const [chain, setChain] = useState("sol")
+  const [tokenAddress, setTokenAddress] = useState("")
+  const [period, setPeriod] = useState("7d")
+  const [mode, setMode] = useState<"token_replay" | "wallet_behavior">("token_replay")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (address.trim()) {
-      onAnalyze(address.trim(), chain, period)
+      onAnalyze(address.trim(), chain, period, tokenAddress.trim(), mode)
     }
   }
 
@@ -32,22 +34,32 @@ export function WalletInput({ onAnalyze, isLoading, language = "en" }: WalletInp
         <div>
           <p className="text-xs uppercase tracking-widest text-primary">{language === "zh" ? "钱包交易行为分析" : "Wallet Behavior Analysis"}</p>
           <h2 className="text-xl font-semibold text-foreground">{language === "zh" ? "交易行为实验室" : "Trading Behavior Lab"}</h2>
+          <p className="text-xs font-medium text-ai-accent">{language === "zh" ? "由 Bitget Wallet Skill 提供支持" : "Powered by Bitget Wallet Skill"}</p>
           <p className="text-sm text-muted-foreground">
-            {language === "zh" ? "别再只问下一个买什么，先看清上一笔为什么亏。" : "Stop asking what to buy. Start understanding why your trades failed."}
+            {language === "zh" ? "复盘你的链上交易，对比 smart money，找出本该遵守的交易规则。" : "Replay your on-chain trades, compare your behavior with smart money, and discover the trading rules you should have followed."}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {language === "zh" ? "输入钱包地址，复盘你的链上交易行为，找出你到底是买晚了、卖早了，还是亏损单拿太久。" : "Enter a wallet address to replay your trading behavior and find the repeated leaks."}
+            {language === "zh" ? "单币复盘模式推荐同时输入钱包地址和代币合约地址。" : "Token contract address is optional, but recommended for Bitget Token Replay Mode."}
           </p>
         </div>
       </div>
       
-      <form onSubmit={handleSubmit} className="grid gap-3 lg:grid-cols-[1fr_140px_120px_auto]">
+      <form onSubmit={handleSubmit} className="grid gap-3 lg:grid-cols-[1.3fr_1fr_140px_130px_150px_auto]">
         <div className="relative">
           <Input
             type="text"
-            placeholder={language === "zh" ? "输入钱包地址..." : "Enter Solana wallet address..."}
+            placeholder={language === "zh" ? "钱包地址" : "Wallet Address"}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            className="h-12 pl-4 pr-4 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20"
+          />
+        </div>
+        <div className="relative">
+          <Input
+            type="text"
+            placeholder={language === "zh" ? "代币合约地址（可选）" : "Token Contract, optional"}
+            value={tokenAddress}
+            onChange={(e) => setTokenAddress(e.target.value)}
             className="h-12 pl-4 pr-4 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20"
           />
         </div>
@@ -56,17 +68,29 @@ export function WalletInput({ onAnalyze, isLoading, language = "en" }: WalletInp
           onChange={(event) => setChain(event.target.value)}
           className="h-12 rounded-xl border border-border/50 bg-secondary/50 px-4 text-sm text-foreground focus:border-primary focus:outline-none"
         >
-          <option value="Solana">{language === "zh" ? "索拉纳" : "Solana"}</option>
-          <option value="X Layer">{language === "zh" ? "X层" : "X Layer"}</option>
+          <option value="sol">{language === "zh" ? "Solana" : "Solana"}</option>
+          <option value="base">Base</option>
+          <option value="bnb">BNB</option>
+          <option value="ethereum">Ethereum</option>
+          <option value="arbitrum">Arbitrum</option>
+          <option value="polygon">Polygon</option>
         </select>
         <select
           value={period}
           onChange={(event) => setPeriod(event.target.value)}
           className="h-12 rounded-xl border border-border/50 bg-secondary/50 px-4 text-sm text-foreground focus:border-primary focus:outline-none"
         >
-          <option value="7D">{language === "zh" ? "7天" : "7D"}</option>
-          <option value="30D">{language === "zh" ? "30天" : "30D"}</option>
-          <option value="90D">{language === "zh" ? "90天" : "90D"}</option>
+          <option value="24h">{language === "zh" ? "24小时" : "24h"}</option>
+          <option value="7d">{language === "zh" ? "7天" : "7d"}</option>
+          <option value="30d">{language === "zh" ? "30天" : "30d"}</option>
+        </select>
+        <select
+          value={mode}
+          onChange={(event) => setMode(event.target.value as "token_replay" | "wallet_behavior")}
+          className="h-12 rounded-xl border border-border/50 bg-secondary/50 px-4 text-sm text-foreground focus:border-primary focus:outline-none"
+        >
+          <option value="token_replay">{language === "zh" ? "单币复盘" : "Token Replay"}</option>
+          <option value="wallet_behavior">{language === "zh" ? "钱包行为" : "Wallet Behavior"}</option>
         </select>
         <Button 
           type="submit" 

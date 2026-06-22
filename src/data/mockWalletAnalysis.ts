@@ -4,6 +4,73 @@ export interface PricePathPoint {
   pnlPct: number
 }
 
+export type DataSource = "mock" | "bitget" | "okx"
+export type DataCoverage = "full" | "partial" | "mock_fallback" | "unsupported"
+export type AnalysisMode = "token_replay" | "wallet_behavior"
+export type RiskLevel = "low" | "medium" | "high" | "unknown"
+
+export interface DataCoverageStatus {
+  tokenInfo: boolean
+  kline: boolean
+  walletTransactions: boolean
+  security: boolean
+  holders: boolean
+  smartMoneyMarkers: boolean
+}
+
+export interface BitgetMarketContext {
+  tokenPrice?: number
+  marketCap?: number
+  liquidity?: number
+  volume24h?: number
+  buyPressure?: number
+  sellPressure?: number
+  entryMarketState: string
+  exitMarketState: string
+  momentumState: string
+  liquidityState: string
+  volatilityState: string
+}
+
+export interface SmartMoneyContrast {
+  userAction: string
+  smartMoneyAction: string
+  kolAction: string
+  alignmentScore: number
+  diagnosis: string
+  evidence: string[]
+}
+
+export interface SecurityRiskSummary {
+  riskLevel: RiskLevel
+  riskFlags: string[]
+  plainEnglishSummary: string
+}
+
+export interface HolderRiskSummary {
+  topHolderConcentrationLevel: RiskLevel
+  smartMoneyHolderPresence: boolean
+  cexHolderPresence: boolean
+  suspiciousConcentration: boolean
+  diagnosis: string
+}
+
+export interface BitgetMeta {
+  chain: string
+  walletAddress: string
+  tokenAddress?: string
+  tokenInfo?: Record<string, unknown>
+  securitySummary?: SecurityRiskSummary
+  holderSummary?: HolderRiskSummary
+  tradingDynamics?: Record<string, unknown>
+  marketContext?: BitgetMarketContext
+  smartMoneySummary?: SmartMoneyContrast
+  kolSummary?: Record<string, unknown>
+  quotePreview?: Record<string, unknown>
+  dataCoverageStatus?: DataCoverageStatus
+  warnings: string[]
+}
+
 export interface WalletSummary {
   totalTrades: number
   winRate: number
@@ -66,6 +133,15 @@ export interface TradeReplay {
   suggestedFix: string
   pricePath: PricePathPoint[]
   overheatedAtEntry?: boolean
+  smartMoneyAtEntry?: string
+  smartMoneyAtExit?: string
+  kolAtEntry?: string
+  kolAtExit?: string
+  holderRiskAtEntry?: string
+  securityRisk?: RiskLevel
+  buyPressureAtEntry?: number
+  sellPressureAtExit?: number
+  marketContextDiagnosis?: string
 }
 
 export interface TradingLeak {
@@ -142,6 +218,10 @@ export interface WalletAnalysis {
   walletAddress: string
   chain: string
   period: string
+  mode?: AnalysisMode
+  dataSource: DataSource
+  dataCoverage: DataCoverage
+  bitgetMeta?: BitgetMeta
   summary: WalletSummary
   personality: TradingPersonality
   trades: TradeReplay[]
@@ -180,10 +260,19 @@ export const mockTrades: TradeReplay[] = [
     exitAftermath: "Sold at +110%, then price expanded to +340% before fading.",
     entryScore: 82,
     exitScore: 43,
-    mistakeTags: ["Sold Too Early", "卖飞", "No Staged TP"],
+    mistakeTags: ["Sold Too Early", "卖飞", "No Staged TP", "EARLY_EXIT", "SOLD_BEFORE_MOMENTUM_EXPANSION"],
     diagnosis: "Good entry, weak exit. You caught a strong token early enough, but only captured 32.4% of the available upside.",
     chineseDiagnosis: "买点不错，卖点偏弱。你抓到了一个不错的入场点，但只吃到了最高利润的 32.4%。",
     suggestedFix: "Use staged take-profit once unrealized PnL exceeds +80%, then trail the remaining bag.",
+    smartMoneyAtEntry: "net buying",
+    smartMoneyAtExit: "continued buying",
+    kolAtEntry: "watching",
+    kolAtExit: "momentum posts increased",
+    holderRiskAtEntry: "medium",
+    securityRisk: "medium",
+    buyPressureAtEntry: 68,
+    sellPressureAtExit: 39,
+    marketContextDiagnosis: "Momentum was still expanding when the wallet fully exited.",
     pricePath: pricePath(0.00000142, [
       { minute: 0, pnlPct: 0 },
       { minute: 1, pnlPct: 18 },
@@ -217,10 +306,19 @@ export const mockTrades: TradeReplay[] = [
     exitAftermath: "Sold before the strongest continuation candle; later reached +410%.",
     entryScore: 91,
     exitScore: 46,
-    mistakeTags: ["Missed Peak", "Weak Profit Lock"],
+    mistakeTags: ["Missed Peak", "Weak Profit Lock", "EARLY_EXIT", "NO_CLEAR_EXIT_RULE"],
     diagnosis: "Strong entry, weak profit protection. You had a clean runner but exited before the largest expansion phase.",
     chineseDiagnosis: "入场很强，但利润保护偏弱。你抓到了趋势，却在最大加速段前离场。",
     suggestedFix: "After taking principal out, keep 10% open until a trailing stop confirms trend failure.",
+    smartMoneyAtEntry: "aligned accumulation",
+    smartMoneyAtExit: "continued buying",
+    kolAtEntry: "bullish mentions rising",
+    kolAtExit: "still bullish",
+    holderRiskAtEntry: "low",
+    securityRisk: "low",
+    buyPressureAtEntry: 74,
+    sellPressureAtExit: 31,
+    marketContextDiagnosis: "The sell happened before momentum exhaustion and before buy pressure cooled.",
     pricePath: pricePath(0.0024, [
       { minute: 0, pnlPct: 0 },
       { minute: 1, pnlPct: 14 },
@@ -255,11 +353,20 @@ export const mockTrades: TradeReplay[] = [
     exitAftermath: "Never gained momentum, then continued toward -42% after the exit window.",
     entryScore: 34,
     exitScore: 28,
-    mistakeTags: ["Bad Entry", "Late Stop", "亏损死拿"],
+    mistakeTags: ["Bad Entry", "Late Stop", "亏损死拿", "FOMO_ENTRY", "HELD_THROUGH_DRAWDOWN", "BOUGHT_INTO_HOLDER_CONCENTRATION"],
     diagnosis: "Weak entry with no follow-through. The trade never reached +30% within the first 20 minutes, then drifted into a preventable loss.",
     chineseDiagnosis: "入场偏弱，后续没有跟进。20 分钟内没有达到 +30%，却继续持有到可避免的亏损。",
     suggestedFix: "Use a 20-minute time stop for low-momentum entries and hard stop the trade at -30%.",
     overheatedAtEntry: true,
+    smartMoneyAtEntry: "distribution",
+    smartMoneyAtExit: "mostly exited",
+    kolAtEntry: "late hype",
+    kolAtExit: "quiet",
+    holderRiskAtEntry: "high",
+    securityRisk: "medium",
+    buyPressureAtEntry: 44,
+    sellPressureAtExit: 67,
+    marketContextDiagnosis: "The wallet bought into weak follow-through while holder concentration and sell pressure were elevated.",
     pricePath: pricePath(0.0056, [
       { minute: 0, pnlPct: 0 },
       { minute: 1, pnlPct: -9 },
@@ -293,10 +400,19 @@ export const mockTrades: TradeReplay[] = [
     exitAftermath: "Sold as a scalp, then price pushed to +89% before cooling.",
     entryScore: 76,
     exitScore: 52,
-    mistakeTags: ["Tiny Win Bias"],
+    mistakeTags: ["Tiny Win Bias", "EARLY_EXIT", "NO_CLEAR_EXIT_RULE"],
     diagnosis: "Entry was fine, but you treated a clean trend as a scalp. The chart gave enough room for a staged TP1.",
     chineseDiagnosis: "买点可以，但你把一段干净趋势当成短线 scalp 处理，错过了 TP1 空间。",
     suggestedFix: "Do not fully exit a green trade before +80% unless momentum breaks or the stop is hit.",
+    smartMoneyAtEntry: "neutral to buying",
+    smartMoneyAtExit: "still holding",
+    kolAtEntry: "low signal",
+    kolAtExit: "mentions rising",
+    holderRiskAtEntry: "medium",
+    securityRisk: "unknown",
+    buyPressureAtEntry: 61,
+    sellPressureAtExit: 42,
+    marketContextDiagnosis: "Exit discipline was weaker than the market context; momentum had not clearly failed.",
     pricePath: pricePath(0.00089, [
       { minute: 0, pnlPct: 0 },
       { minute: 1, pnlPct: 7 },
@@ -314,6 +430,77 @@ export const mockWalletAnalysis: WalletAnalysis = {
   walletAddress: "7xKXq9fQm2Mirror3nPq",
   chain: "Solana",
   period: "7D",
+  mode: "token_replay",
+  dataSource: "mock",
+  dataCoverage: "mock_fallback",
+  bitgetMeta: {
+    chain: "Solana",
+    walletAddress: "7xKXq9fQm2Mirror3nPq",
+    tokenAddress: "So111MirrorBONK9nPq1111111111111111111111",
+    tokenInfo: {
+      symbol: "BONK",
+      name: "Bonk Inu",
+      priceUsd: 0.0000021,
+      marketCapUsd: 1420000000,
+      liquidityUsd: 38000000,
+      volume24hUsd: 92000000,
+    },
+    securitySummary: {
+      riskLevel: "medium",
+      riskFlags: ["demo_security_context", "holder concentration should be checked before sizing"],
+      plainEnglishSummary: "Demo fallback security context. Real Bitget mode should replace this with Wallet Skill token security output.",
+    },
+    holderSummary: {
+      topHolderConcentrationLevel: "medium",
+      smartMoneyHolderPresence: true,
+      cexHolderPresence: true,
+      suspiciousConcentration: false,
+      diagnosis: "Demo fallback holder context shows moderate concentration, so behavior scoring should consider position sizing risk.",
+    },
+    tradingDynamics: {
+      buyPressure: 66,
+      sellPressure: 41,
+      momentum: "expanding",
+      volatility: "high",
+    },
+    marketContext: {
+      tokenPrice: 0.0000021,
+      marketCap: 1420000000,
+      liquidity: 38000000,
+      volume24h: 92000000,
+      buyPressure: 66,
+      sellPressure: 41,
+      entryMarketState: "momentum expansion",
+      exitMarketState: "trend still active",
+      momentumState: "positive",
+      liquidityState: "deep enough for demo sizing",
+      volatilityState: "high",
+    },
+    smartMoneySummary: {
+      userAction: "sold full position",
+      smartMoneyAction: "continued buying",
+      kolAction: "momentum discussion increased",
+      alignmentScore: 42,
+      diagnosis: "The demo wallet exited while smart money and KOL momentum had not cooled, creating a missed-upside pattern.",
+      evidence: ["Smart money marker remained net-buying after exit", "KOL activity increased during the next expansion leg"],
+    },
+    kolSummary: {
+      action: "momentum discussion increased",
+    },
+    quotePreview: {
+      supported: false,
+      message: "Quote preview is disabled in mock mode.",
+    },
+    dataCoverageStatus: {
+      tokenInfo: true,
+      kline: true,
+      walletTransactions: true,
+      security: true,
+      holders: true,
+      smartMoneyMarkers: true,
+    },
+    warnings: ["Demo fallback data. No live Bitget Wallet Skill request was made."],
+  },
   summary: {
     totalTrades: 42,
     winRate: 35.7,

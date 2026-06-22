@@ -19,7 +19,7 @@ export function DashboardHeader({ language, onLanguageChange }: DashboardHeaderP
                   {language === "zh" ? "交易行为实验室" : "Trading Behavior Lab"}
                 </span>
                 <span className="text-[10px] text-muted-foreground -mt-1 uppercase tracking-widest">
-                  {language === "zh" ? "钱包交易行为分析" : "Wallet Behavior Analysis"}
+                  {language === "zh" ? "由 Bitget Wallet Skill 提供支持" : "Powered by Bitget Wallet Skill"}
                 </span>
               </div>
             </div>

@@ -2,6 +2,19 @@ import type { TradeReplay, TradingPersonality } from "@/src/data/mockWalletAnaly
 import { getAverageProfitCapture } from "./profitCapture"
 
 export function analyzeTradingPersonality(trades: TradeReplay[]): TradingPersonality {
+  if (!trades.length) {
+    return {
+      type: "Insufficient Data",
+      chineseType: "数据不足",
+      explanation: "There are not enough complete replayable trades to classify behavior reliably.",
+      chineseExplanation: "当前没有足够完整的可复盘交易，暂时不能可靠判断交易人格。",
+      coreDiagnosis: "Data coverage is incomplete. Use token replay mode with a wallet-specific buy/sell pair for stronger analysis.",
+      evidence: ["No complete buy/sell pair with usable price path was available."],
+      traits: ["Partial Coverage"],
+      emoji: "Data",
+    }
+  }
+
   const winners = trades.filter((trade) => trade.realizedPnlPct > 0)
   const losers = trades.filter((trade) => trade.realizedPnlPct < 0)
   const continuedHigher = winners.filter((trade) => trade.maxUpsidePct > trade.realizedPnlPct).length

@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Trading Behavior Lab — Wallet Trade Analysis',
-  description: 'Analyze your Solana meme token trades and understand your trading behavior',
+  title: 'Trading Behavior Lab — Bitget Wallet Skill Edition',
+  description: 'Replay wallet trades, compare behavior with smart money, and review security and holder-risk context.',
   generator: 'v0.app',
   icons: {
     icon: [

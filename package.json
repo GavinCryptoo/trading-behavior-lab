@@ -1,7 +1,7 @@
 {
   "name": "trading-behavior-lab",
   "version": "0.1.0",
-  "description": "Open-source wallet-based trading behavior analysis tool for on-chain traders.",
+  "description": "Wallet-based trade replay and behavior analysis copilot powered by Bitget Wallet Skill.",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -16,6 +16,7 @@
     "wallet-analytics",
     "trading-behavior",
     "on-chain",
+    "bitget-wallet-skill",
     "web3",
     "okx",
     "nextjs",
@@ -33,7 +34,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "verify:lightweight": "node scripts/verify-lightweight.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

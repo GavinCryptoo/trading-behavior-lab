@@ -12,8 +12,10 @@ import { PersonalizedRules } from "@/components/dashboard/personalized-rules"
 import { TradeReplayCards } from "@/components/dashboard/trade-replay-cards"
 import { WhatIfSimulation } from "@/components/dashboard/what-if-simulation"
 import { DegenReportCard } from "@/components/dashboard/degen-report-card"
+import { BitgetContextCards } from "@/components/dashboard/bitget-context-cards"
+import { HackathonDemoFlow, SafetyNotice } from "@/components/dashboard/hackathon-polish"
 import { mockWalletAnalysis } from "@/src/data/mockWalletAnalysis"
-import type { WalletAnalysis } from "@/src/data/mockWalletAnalysis"
+import type { AnalysisMode, DataSource, WalletAnalysis } from "@/src/data/mockWalletAnalysis"
 import { buildWhatIfSimulation } from "@/src/lib/analysis/whatIfSimulation"
 import { analyzeTradingPersonality } from "@/src/lib/analysis/tradingPersonality"
 import { analyzeTradingLeaks } from "@/src/lib/analysis/tradingLeaks"
@@ -23,10 +25,13 @@ import { analyzeDrawdownBehavior } from "@/src/lib/analysis/drawdownBehavior"
 import { generateReportCard } from "@/src/lib/analysis/reportCard"
 
 type Language = "en" | "zh"
-type DataSource = "mock" | "okx"
 type AnalyzeWalletResponse = {
+  ok: boolean
+  dataSource: DataSource
+  dataCoverage: WalletAnalysis["dataCoverage"]
   source: DataSource
   message: string
+  error?: string
   analysis: WalletAnalysis
 }
 
@@ -98,7 +103,7 @@ function strategyReason(id: string) {
 }
 
 function AnalysisLoadingPanel() {
-  const steps = ["连接 OKX OnchainOS", "读取钱包交易历史", "拉取分钟级价格路径", "计算买卖点与回放策略"]
+  const steps = ["连接 Bitget Wallet Skill", "读取代币 / 钱包上下文", "拉取K线与交易标记", "计算行为复盘与风险提示"]
 
   return (
     <div className="glass-card rounded-2xl border border-primary/30 bg-primary/5 p-5 neon-glow" aria-live="polite">
@@ -107,7 +112,7 @@ function AnalysisLoadingPanel() {
         <div className="flex-1">
           <p className="text-sm font-semibold text-primary">正在分析钱包，请不要关闭页面</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            正在请求真实链上数据并生成复盘。如果 OKX 密钥未配置或该钱包暂时没有可用价格路径，系统会自动切换到模拟数据展示。
+            正在请求可用的 Bitget Wallet Skill 数据并生成复盘。如果数据不完整，系统会明确标注覆盖范围并保留模拟兜底数据。
           </p>
           <div className="mt-4 grid gap-2 md:grid-cols-4">
             {steps.map((step) => (
@@ -134,11 +139,20 @@ function EmptyAnalysisState({ language }: { language: Language }) {
       <p className="mt-2 text-sm text-muted-foreground">
         {language === "zh" ? "输入钱包地址并点击开始分析后，才会生成链上交易复盘。" : "Enter a wallet address and run analysis to generate the trade replay."}
       </p>
+      <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs">
+        <span className="rounded-full border border-border/50 bg-secondary/40 px-3 py-1 text-muted-foreground">
+          {language === "zh" ? "当前数据状态：模拟演示" : "Current data state: Mock Demo"}
+        </span>
+        <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-warning">
+          {language === "zh" ? "分析后会显示兜底和部分数据状态" : "Fallback and partial states are shown after analysis"}
+        </span>
+      </div>
     </div>
   )
 }
 
 function ZhDashboard({ analysis, dataSource, sourceMessage }: { analysis: WalletAnalysis; dataSource: DataSource; sourceMessage: string }) {
+  const isLiveData = dataSource === "bitget" || dataSource === "okx"
   const zhLeakTitles: Record<string, string> = {
     "Selling Winners Too Early": "盈利单卖太早",
     "Holding Losers Too Long": "亏损单拿太久",
@@ -164,9 +178,7 @@ function ZhDashboard({ analysis, dataSource, sourceMessage }: { analysis: Wallet
 
   return (
     <>
-      <div className={`rounded-2xl border px-5 py-4 text-sm ${dataSource === "okx" ? "border-profit/30 bg-profit/10 text-profit" : "border-warning/30 bg-warning/10 text-warning"}`}>
-        数据来源：{dataSource === "okx" ? "OKX OnchainOS 真实交易历史与历史K线" : "模拟数据"}。{sourceMessage}
-      </div>
+      <BitgetContextCards analysis={analysis} dataSource={dataSource} sourceMessage={sourceMessage} language="zh" />
 
       <div className="glass-card rounded-2xl p-6 border-2 border-ai-accent/30 neon-glow-purple">
         <p className="text-xs tracking-widest text-ai-accent">复盘教练诊断</p>
@@ -322,16 +334,21 @@ function ZhDashboard({ analysis, dataSource, sourceMessage }: { analysis: Wallet
           <div>
             <h3 className="text-lg font-semibold text-foreground">单笔交易复盘</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              共生成 {analysis.trades.length} 张{dataSource === "okx" ? "可复盘交易卡" : "代表性样本卡"}，覆盖 {analysis.summary.totalTrades} 笔交易；当前页显示 {pagedTrades.length} 张。
+              共生成 {analysis.trades.length} 张{isLiveData ? "可复盘交易卡" : "代表性样本卡"}，覆盖 {analysis.summary.totalTrades} 笔交易；当前页显示 {pagedTrades.length} 张。
             </p>
           </div>
           <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning">
-            {dataSource === "okx" ? "已过滤纯SOL转账、失败交易、未完成买卖对和缺少K线的记录。" : "剩余交易目前只进入总览统计；接入真实价格路径后会分页展示全部交易。"}
+            {isLiveData ? "已过滤失败交易、未完成买卖对和缺少K线的记录。" : "剩余交易目前只进入总览统计；接入真实价格路径后会分页展示全部交易。"}
           </div>
         </div>
         <div className="mt-4 rounded-xl bg-secondary/30 border border-border/50 p-4 text-sm text-muted-foreground">
-          {dataSource === "okx" ? "展示规则：OKX 返回的是链上交易记录，这里只展示能匹配到 token 买入、卖出和分钟级价格路径的交易，用于计算买入后高低点、利润捕获率和回放模拟。" : "选择这几笔的原因：它们分别代表卖飞、利润保护不足、亏损死拿、小赚早退四类最高频问题。当前 mock 阶段只有这些交易具备完整分钟级价格路径，才能做买入后高低点、利润捕获率和回放模拟。"}
+          {isLiveData ? "展示规则：这里只展示能匹配到 token 买入、卖出和分钟级价格路径的交易，用于计算买入后高低点、利润捕获率和回放模拟；缺失部分会在数据覆盖范围中明示。" : "选择这几笔的原因：它们分别代表卖飞、利润保护不足、亏损死拿、小赚早退四类最高频问题。当前 mock 阶段只有这些交易具备完整分钟级价格路径，才能做买入后高低点、利润捕获率和回放模拟。"}
         </div>
+        {!analysis.trades.length ? (
+          <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-5 text-sm text-warning">
+            当前请求没有重建出完整买入 / 卖出交易对，因此不伪造单笔复盘卡。请尝试单币复盘模式并提供代币合约地址，或查看数据覆盖范围。
+          </div>
+        ) : null}
         <div className="mt-4 space-y-4">
           {pagedTrades.map((trade, index) => (
             <div key={trade.id} className="rounded-xl bg-secondary/30 border border-border/50 p-4">
@@ -345,7 +362,7 @@ function ZhDashboard({ analysis, dataSource, sourceMessage }: { analysis: Wallet
                 </div>
               </div>
               <p className="mt-4 rounded-lg bg-ai-accent/10 border border-ai-accent/20 px-3 py-2 text-xs text-ai-accent">
-                样本理由：{sampleReasons[(safeTradePage - 1) * pageSize + index] ?? "来自 OKX 的完整买入/卖出样本，已匹配分钟级价格路径。"}
+                样本理由：{sampleReasons[(safeTradePage - 1) * pageSize + index] ?? "来自可用数据的完整买入/卖出样本，已匹配分钟级价格路径。"}
               </p>
               <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <p className="text-muted-foreground">买入价：<span className="text-foreground">{formatTokenPrice(trade.buyPrice)}</span></p>
@@ -369,7 +386,7 @@ function ZhDashboard({ analysis, dataSource, sourceMessage }: { analysis: Wallet
         </div>
         <div className="mt-5 flex flex-col gap-3 border-t border-border/50 pt-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-muted-foreground">
-            第 {safeTradePage} / {totalPages} 页，当前显示第 {(safeTradePage - 1) * pageSize + 1} - {Math.min(safeTradePage * pageSize, analysis.trades.length)} 笔，共 {analysis.trades.length} 张复盘卡。
+            第 {safeTradePage} / {totalPages} 页，当前显示第 {analysis.trades.length ? (safeTradePage - 1) * pageSize + 1 : 0} - {Math.min(safeTradePage * pageSize, analysis.trades.length)} 笔，共 {analysis.trades.length} 张复盘卡。
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -393,7 +410,7 @@ function ZhDashboard({ analysis, dataSource, sourceMessage }: { analysis: Wallet
       </div>
 
       <div className="text-center py-8 text-sm text-muted-foreground">
-        <p>{dataSource === "okx" ? "当前结果来自 OKX 接口和本地复盘算法。" : "当前为模拟数据，用于前端演示和算法占位。"}</p>
+        <p>{dataSource === "bitget" ? "当前结果来自 Bitget Wallet Skill 可用数据和本地复盘算法。" : dataSource === "okx" ? "当前结果来自 OKX 接口和本地复盘算法。" : "当前为模拟数据，用于前端演示和算法占位。"}</p>
         <p className="mt-1">复盘结果不是投资建议，只用于交易行为复盘。</p>
       </div>
     </>
@@ -405,8 +422,8 @@ export default function TradingBehaviorLabDashboard() {
   const [isAnalyzed, setIsAnalyzed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [walletAddress, setWalletAddress] = useState("")
-  const [chain, setChain] = useState("Solana")
-  const [period, setPeriod] = useState("7D")
+  const [chain, setChain] = useState("sol")
+  const [period, setPeriod] = useState("7d")
   const [analysisOverride, setAnalysisOverride] = useState<WalletAnalysis | null>(null)
   const [dataSource, setDataSource] = useState<DataSource>("mock")
   const [sourceMessage, setSourceMessage] = useState("")
@@ -444,7 +461,7 @@ export default function TradingBehaviorLabDashboard() {
   }, [walletAddress, chain, period])
   const analysis = analysisOverride ?? mockAnalysis
 
-  const handleAnalyze = async (address: string, selectedChain: string, selectedPeriod: string) => {
+  const handleAnalyze = async (address: string, selectedChain: string, selectedPeriod: string, tokenAddress: string, selectedMode: AnalysisMode) => {
     setIsLoading(true)
     setWalletAddress(address)
     setChain(selectedChain)
@@ -452,26 +469,26 @@ export default function TradingBehaviorLabDashboard() {
     setAnalysisOverride(null)
     setIsAnalyzed(false)
     setDataSource("mock")
-    setSourceMessage("正在连接 OKX OnchainOS 并分析钱包交易，请稍候。")
+    setSourceMessage("正在连接 Bitget Wallet Skill 并分析钱包交易，请稍候。")
 
     try {
       const [response] = await Promise.all([
         fetch("/api/analyze-wallet", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ walletAddress: address, chain: selectedChain, period: selectedPeriod }),
+          body: JSON.stringify({ walletAddress: address, chain: selectedChain, period: selectedPeriod, tokenAddress, mode: selectedMode }),
         }),
         wait(900),
       ])
       if (!response.ok) throw new Error(`本地分析接口返回 ${response.status}`)
       const payload = (await response.json()) as AnalyzeWalletResponse
       setAnalysisOverride(payload.analysis)
-      setDataSource(payload.source)
+      setDataSource(payload.dataSource ?? payload.source)
       setSourceMessage(payload.message)
       setIsAnalyzed(true)
     } catch (error) {
       setDataSource("mock")
-      setSourceMessage(error instanceof Error ? `真实接口暂不可用：${error.message}` : "真实接口暂不可用，已切换模拟数据。")
+      setSourceMessage(error instanceof Error ? `接口暂不可用：${error.message}` : "接口暂不可用，已切换模拟数据。")
       setAnalysisOverride(null)
       setIsAnalyzed(false)
     } finally {
@@ -487,6 +504,10 @@ export default function TradingBehaviorLabDashboard() {
         <div className="max-w-7xl mx-auto space-y-8">
           <WalletInput onAnalyze={handleAnalyze} isLoading={isLoading} language={language} />
 
+          <HackathonDemoFlow language={language} />
+
+          <SafetyNotice language={language} />
+
           {isLoading && <AnalysisLoadingPanel />}
 
           {!isLoading && !isAnalyzed && <EmptyAnalysisState language={language} />}
@@ -496,6 +517,8 @@ export default function TradingBehaviorLabDashboard() {
               <ZhDashboard analysis={analysis} dataSource={dataSource} sourceMessage={sourceMessage} />
             ) : (
               <>
+              <BitgetContextCards analysis={analysis} dataSource={dataSource} sourceMessage={sourceMessage} language="en" />
+
               <OverallDiagnosis
                 mainLeak={analysis.reportCard.biggestLeak}
                 diagnosis="You can find upside, but you fail to protect it after large unrealized gains."
@@ -552,8 +575,8 @@ export default function TradingBehaviorLabDashboard() {
               <TradeReplayCards trades={analysis.trades} />
 
               <div className="text-center py-8 text-sm text-muted-foreground">
-                <p>Trading Behavior Lab · mock data only</p>
-                <p className="mt-1">Built for future OKX OnchainOS / Solana data integration · Not financial advice</p>
+                <p>Trading Behavior Lab · Powered by Bitget Wallet Skill</p>
+                <p className="mt-1">Retrospective behavior analysis only · No signing, auto-trading, or custody · Not financial advice</p>
               </div>
               </>
             )

@@ -142,6 +142,26 @@ function TradeCard({ trade }: { trade: TradeReplay }) {
               <p className="text-sm text-foreground">{trade.suggestedFix}</p>
             </div>
           </div>
+          {(trade.smartMoneyAtEntry || trade.securityRisk || trade.holderRiskAtEntry || trade.marketContextDiagnosis) ? (
+            <div className="grid md:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-ai-accent/10 border border-ai-accent/20 p-3">
+                <p className="text-xs text-ai-accent mb-1">Smart Money</p>
+                <p className="text-sm text-foreground">{trade.smartMoneyAtEntry ?? "unknown"}</p>
+              </div>
+              <div className="rounded-lg bg-ai-accent/10 border border-ai-accent/20 p-3">
+                <p className="text-xs text-ai-accent mb-1">KOL</p>
+                <p className="text-sm text-foreground">{trade.kolAtEntry ?? "unknown"}</p>
+              </div>
+              <div className="rounded-lg bg-warning/10 border border-warning/20 p-3">
+                <p className="text-xs text-warning mb-1">Holder / Security</p>
+                <p className="text-sm text-foreground">{trade.holderRiskAtEntry ?? "unknown"} / {trade.securityRisk ?? "unknown"}</p>
+              </div>
+              <div className="rounded-lg bg-background/30 border border-border/40 p-3">
+                <p className="text-xs text-muted-foreground mb-1">Market Context</p>
+                <p className="text-sm text-foreground">{trade.marketContextDiagnosis ?? "not available"}</p>
+              </div>
+            </div>
+          ) : null}
           {trade.profitGivebackPct ? (
             <div className="rounded-lg bg-loss/10 border border-loss/20 p-3">
               <p className="text-xs text-loss mb-1">Profit Giveback</p>
@@ -272,6 +292,12 @@ export function TradeReplayCards({ trades }: TradeReplayCardsProps) {
         </div>
       </div>
 
+      {!trades.length ? (
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-5 text-sm text-warning">
+          No replayable buy/sell pair was reconstructed for this request. The app is showing the data gap instead of inventing trades.
+        </div>
+      ) : null}
+
       <div className="space-y-4">
         {pagedTrades.map((trade) => (
           <TradeCard key={trade.id} trade={trade} />
@@ -280,7 +306,7 @@ export function TradeReplayCards({ trades }: TradeReplayCardsProps) {
 
       <div className="mt-5 flex flex-col gap-3 border-t border-border/50 pt-4 md:flex-row md:items-center md:justify-between">
         <p className="text-sm text-muted-foreground">
-          Page {safePage} / {totalPages}, showing {(safePage - 1) * pageSize + 1}-{Math.min(safePage * pageSize, trades.length)} of {trades.length} replay cards.
+          Page {safePage} / {totalPages}, showing {trades.length ? (safePage - 1) * pageSize + 1 : 0}-{Math.min(safePage * pageSize, trades.length)} of {trades.length} replay cards.
         </p>
         <div className="flex items-center gap-2">
           <Button
